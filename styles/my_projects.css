@@ -20,3 +20,34 @@ body {
     font-size: 24px;
     transform: translateY(-25%);
 }
+
+.projects-container {
+    display: flex;
+    flex-direction: column;
+    margin-top: 20px;
+    align-items: center; 
+}
+
+.project-container-left {
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    border: 2px solid black;
+    width: 500px;
+    height: 300px;
+    transform: translate(-25%, 10%) rotate(-3deg);
+    box-shadow: 10px 10px 10px 10px rgba(0, 0, 0, 0.5);
+
+}
+
+.project-container-right {
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    border: 2px solid black;
+    width: 500px;
+    height: 300px;
+    transform: translate(30%, 10%) rotate(2deg);
+    box-shadow: 10px 10px 10px 10px rgba(0, 0, 0, 0.5);
+ 
+}
