@@ -79,6 +79,7 @@ button {
     transform: translateY(-5%);
     font-size: 18px;
     font-weight: 400;
+    text-shadow: 1px 1px 5px rgba(0, 0, 0, 0.5);
 }
 
 

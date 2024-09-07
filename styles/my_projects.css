@@ -1,3 +1,5 @@
+@import url('https://fonts.googleapis.com/css2?family=Honk:wght@400;500;700&display=swap');
+
 body {
     margin: 10px 0 0 0;
 }
@@ -21,33 +23,68 @@ body {
     transform: translateY(-25%);
 }
 
+.projects-title {
+    font-family: 'Honk', sans-serif;
+    font-size: 36px;
+    font-weight: 500;
+    text-align: center;
+    text-shadow: 2px 2px 10px rgba(0, 0, 0, 0.5);
+}
+
+
 .projects-container {
     display: flex;
     flex-direction: column;
-    margin-top: 20px;
     align-items: center; 
+    position: relative;
+    margin-bottom: -40px;
 }
 
-.project-container-left {
+.project-container-left h2,
+.project-container-right h2 {
+    display: flex;
+    justify-content: center;
+    font-family: 'Honk', sans-serif;
+    font-size: 48px;
+    font-weight: 500;
+    text-shadow: 2px 2px 10px rgba(0, 0, 0, 0.5);
+    position: relative;
+    z-index: 1;
+
+}
+
+.project-container-left h2 {
+    position: absolute;
+    transform: translate(250%, -300%);
+
+}
+
+.project-container-right h2 {
+    position: absolute;
+    top: 50%;
+    right: 50%;
+    transform: translate(-100%, 200%);
+}
+
+.project-container-left img,
+.project-container-right img {
     display: flex;
     flex-direction: column;
     align-items: center;
-    border: 2px solid black;
+    border: 3px solid black;
     width: 500px;
     height: 300px;
-    transform: translate(-25%, 10%) rotate(-3deg);
     box-shadow: 10px 10px 10px 10px rgba(0, 0, 0, 0.5);
-
+    object-fit: cover;
 }
 
-.project-container-right {
-    display: flex;
-    flex-direction: column;
-    align-items: center;
-    border: 2px solid black;
-    width: 500px;
-    height: 300px;
+.project-container-left img {
+    transform: translate(-25%, 20%) rotate(-3deg);
+    z-index: 2;
+}
+
+.project-container-right img {
     transform: translate(30%, 10%) rotate(2deg);
-    box-shadow: 10px 10px 10px 10px rgba(0, 0, 0, 0.5);
- 
+    z-index: 3;
 }
+
