@@ -6,12 +6,31 @@
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>Travis' Projects</title>
     <script src="../scripts/pages-content.js"></script>
-    <link rel="stylesheet" href="../styles/styles.css">
+    <link rel="stylesheet" href="../styles/home.css">
+    <link rel="stylesheet" href="../styles/my_projects.css">
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
 </head>
 
 <body>
-    <button onclick="loadPage('home')">Home</button>
-    <button onclick="loadPage('about_me')">About Me</button>
+    <div class="header-container">
+        <div class="nav-container">
+            <button onclick="loadPage('home')">Home</button>
+            <button onclick="loadPage('about_me')">About Me</button>
+        </div>
+        <div class="links-container">
+            <a href="LinkedIn_page" target="_blank" rel="noopener noreferrer">
+            <i class="fa-brands fa-linkedin" title="Travis' LinkedIn"></i>
+        </a>
+        <a href="https://github.com/traviswood1" target="_blank" rel="noopener noreferrer">
+            <i class="fa-brands fa-github" title="Travis' Github"></i>
+            </a>
+        </div>
+    </div>
+    <div class="projects-container">
+        <div class="project-container">
+            <img src="../images/project1.png" alt="Project 1">
+        </div>
+    </div>
     <script src="../scripts/scripts.js"></script>
 </body>
 </html>

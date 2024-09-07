@@ -1,0 +1,22 @@
+body {
+    margin: 10px 0 0 0;
+}
+
+.header-container {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+}
+
+.nav-container {
+    display: flex;
+    justify-content: left;
+    align-items: center;
+    margin-left: 30px;
+}
+
+.nav-container button{
+    margin: 5px 5px;
+    font-size: 24px;
+    transform: translateY(-25%);
+}

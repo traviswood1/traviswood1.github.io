@@ -6,12 +6,31 @@
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>About Travis</title>
     <script src="../scripts/pages-content.js"></script>
-    <link rel="stylesheet" href="../styles/styles.css">
+    <link rel="stylesheet" href="../styles/home.css">
+    <link rel="stylesheet" href="../styles/about_me.css">
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
 </head>
 
 <body>
-    <button onclick="loadPage('home')">Home</button>
-    <button onclick="loadPage('my_projects')">My Projects</button>
+    <div class="center-image-container">
+            <div class="links-container">
+            <a href="LinkedIn_page" target="_blank" rel="noopener noreferrer">
+                <i class="fa-brands fa-linkedin" title="Travis' LinkedIn"></i>
+            </a>
+            <a href="https://github.com/traviswood1" target="_blank" rel="noopener noreferrer">
+                <i class="fa-brands fa-github" title="Travis' Github"></i>
+            </a>
+            </div>
+            <div class="about-me-container">
+                <div class="about-me-text">
+                    <h2>About Me</h2>
+                    <p>I am a software developer with a passion for creating innovative solutions to complex problems.
+                        <button onclick="loadPage('home')">Home</button>
+                        <button onclick="loadPage('my_projects')">My Projects</button>
+                </div>
+                <img class="profile-image" src="../images/gengar.jpg" alt="Travis Wood">
+            </div>
+    </div>
     <script src="../scripts/scripts.js"></script>
 </body>
 </html>
