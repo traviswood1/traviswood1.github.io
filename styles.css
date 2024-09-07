@@ -1,0 +1,37 @@
+
+body {
+    background-color: #9c4c4c;
+    margin: 0;
+    padding: 0;
+}
+
+.page-container {
+    width: 100%;
+    height: auto;
+    background-color: #ad1c1c;
+    margin: 0;
+}
+
+.header-container {
+    
+}
+
+.links-container {
+    display: flex;
+    justify-content: right;
+    align-items: center;
+    margin-right: 30px;
+}
+
+.center-text-container {
+    display: flex;
+    justify-content: center;
+    align-items: center;
+    height: 300px;
+}
+
+.center-text-container h1 {
+    font-size: 48px;
+    font-weight: 700; 
+    margin-top: -20px;
+}
