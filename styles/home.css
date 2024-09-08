@@ -67,6 +67,7 @@ body {
     text-align: center;
     transform: translateY(-20%);
     font-style: italic;
+    padding-bottom: 20px;
 }
 
 button {
@@ -94,3 +95,17 @@ button {
         width: 75%;
     }
 }
+
+@media (max-width: 360px) {
+    .center-image-container {
+        width: 100%;
+        height: auto;
+    }
+    
+    .center-image-container img {
+        width: 100%;
+        height: auto;
+    }
+}
+
+

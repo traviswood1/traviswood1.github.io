@@ -1,9 +1,39 @@
+.header-container {
+    display: flex;
+    align-items: flex-start;
+    justify-content: space-between;
+    width: 100%;
+    background-color: aquamarine;
+    margin: 0 0 -50px 10px;
+    transform: translateY(-90%);
+}
+
+.nav-container {
+    display: flex;
+    justify-content: left;
+    width: 49%;
+    background-color: aquamarine;
+    transform: translateY(60%);
+    margin-left: 20px;
+}
+
+.nav-container button {
+    margin: 0 10px;
+}
+
+.links-container {
+    display: flex;
+    justify-content: right;
+    width: 49%;
+    background-color: aquamarine;
+}
+
 .center-image-container {
-    display: float;
+    display: flex;
     flex-direction: column;
     justify-content: center;
     align-items: center;
-    height: auto;
+    height: fit-content;
     min-height: 400px;
     background-color: aquamarine;
 }
@@ -20,20 +50,22 @@
 
 .profile-image {
     display: flex;
-    width: 200px;
-    height: 200px;
+    width: 20vw;
+    height: 20vw;
+    max-width: 200px;
+    max-height: 200px;
+    object-fit: cover;
     border: 2px solid black;
-    border-radius: 100px;
+    border-radius: 50%;
     margin: 0 0 30px 0;
     box-shadow: 0 0 10px 0 rgba(0, 0, 0, 0.5);
-
 }
 
 .about-me-container {
     display: flex;
     justify-content: center;
     align-items: center;
-    width: 75%;
+    max-width: 100%;
     background-color: aquamarine;
     margin: 20px auto;
 }
@@ -50,4 +82,60 @@
     box-shadow: 0 0 10px 0 rgba(0, 0, 0, 0.5);
     margin: 20px;
     padding: 0 0 20px 0;
+}
+
+@media (max-width: 360px) {
+
+    .header-container {
+        width: 100%;
+        margin: 50px 0 -50px 0;
+    }
+
+    .links-container {
+        width:25%;
+    }
+
+    .nav-container {
+        transform: translateY(70%);
+        margin-left: 0;
+        width: 75%;
+    }
+
+    .center-image-container {
+        display: flex;
+        flex-direction: column;
+        justify-content: center;
+        align-items: center;
+        width: 100%;
+    }
+    
+    .about-me-container {
+        display: flex;
+        flex-direction: column;
+        justify-content: center;
+        align-items: center;
+        width: 100%;
+    }
+
+    .about-me-text {
+        width: 90%;
+        text-align: center;
+    }
+
+    .about-me-text h2 {
+        text-align: center;
+        margin: 10px 0 0 0;
+    }
+
+    .about-me-text p {
+        text-align: center;
+        margin: 5px;
+    }
+
+    .profile-image {
+        width: 60vw;
+        height: 60vw;
+        max-width: 200px;
+        max-height: 200px;
+    }
 }

@@ -88,3 +88,11 @@ body {
     z-index: 3;
 }
 
+@media (max-width: 360px) {
+    .project-container-left img,
+    .project-container-right img {
+        width: 100%;
+        height: auto;
+    }
+}
+
