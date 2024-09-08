@@ -6,6 +6,8 @@ body {
     margin: 100px 0 0 0;
     padding: 0;
     font-family: 'Edu Australia VIC WA NT Hand', cursive;
+    overflow-x: hidden;
+    position: relative;
 }
 
 .header-container {
