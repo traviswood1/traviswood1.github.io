@@ -1,6 +1,7 @@
 @import url('https://fonts.googleapis.com/css2?family=Honk:wght@400;500;700&display=swap');
 
 body {
+    width: 100%;
     margin: 10px 0 0 0;
 }
 
@@ -17,7 +18,7 @@ body {
     margin-left: 30px;
 }
 
-.nav-container button{
+.nav-container a {
     margin: 5px 5px;
     font-size: 24px;
     transform: translateY(-25%);
@@ -37,7 +38,12 @@ body {
     flex-direction: column;
     align-items: center; 
     position: relative;
-    margin-bottom: -40px;
+    margin-top: -40px;
+    margin-bottom: -120px;
+    overflow-x: hidden;
+    overflow-y: hidden;
+    width: 100%;
+    padding-bottom: 70px;
 }
 
 .project-container-left h2,
@@ -50,12 +56,11 @@ body {
     text-shadow: 2px 2px 10px rgba(0, 0, 0, 0.5);
     position: relative;
     z-index: 1;
-
 }
 
 .project-container-left h2 {
     position: absolute;
-    transform: translate(250%, -300%);
+    transform: translate(150%, -300%);
 
 }
 
@@ -88,11 +93,21 @@ body {
     z-index: 3;
 }
 
-@media (max-width: 360px) {
-    .project-container-left img,
-    .project-container-right img {
-        width: 100%;
-        height: auto;
+@media (max-width: 500px) {
+    .projects-container {
+        margin-top: -80px;
+    }
+
+    .project-container-left h2,
+    .project-container-right h2 {
+        display: none;
+    }
+
+    .project-container-left {
+        transform: translate(20%, 10%);
+    }
+    .project-container-right {
+        transform: translate(-20%, 10%);
     }
 }
 

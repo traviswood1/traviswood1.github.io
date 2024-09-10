@@ -2,12 +2,11 @@
 @import url('https://fonts.googleapis.com/css2?family=Edu+Australia+VIC+WA+NT+Hand:wght@400;500&display=swap');
 
 body {
+    width: 100%;
     background-color: lightblue;
     margin: 100px 0 0 0;
     padding: 0;
     font-family: 'Edu Australia VIC WA NT Hand', cursive;
-    overflow-x: hidden;
-    position: relative;
 }
 
 .header-container {
@@ -18,7 +17,7 @@ body {
     display: flex;
     justify-content: right;
     align-items: center;
-    margin-right: 30px;
+    padding-right: 30px;
 }
 
 .links-container a i {
@@ -42,7 +41,8 @@ body {
     align-items: center;
     height: 400px;
     background-color: aquamarine;
-    border: 2px solid black;
+    border-top: 2px solid black;
+    border-bottom: 2px solid black;
     box-shadow: 0 0 10px 0 rgba(0, 0, 0, 0.5);
 }
 
@@ -72,14 +72,13 @@ body {
     padding-bottom: 20px;
 }
 
-button {
+.nav-link {
     font-family: 'Honk', sans-serif;
     background: none;
     border: none;
     cursor: pointer;
     margin: 0;
-    padding: 0 3px;
-    transform: translateY(-5%);
+    padding: 0 5px;
     font-size: 18px;
     font-weight: 400;
     text-shadow: 1px 1px 5px rgba(0, 0, 0, 0.5);
@@ -98,7 +97,7 @@ button {
     }
 }
 
-@media (max-width: 360px) {
+@media (max-width: 500px) {
     .center-image-container {
         width: 100%;
         height: auto;
