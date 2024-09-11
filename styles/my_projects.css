@@ -84,7 +84,7 @@ body {
 }
 
 .project-container-left img {
-    transform: translate(-25%, 20%) rotate(-3deg);
+    transform: translate(-35%, 20%) rotate(-3deg);
     z-index: 2;
 }
 
