@@ -3,6 +3,12 @@
 body {
     width: 100%;
     margin: 10px 0 0 0;
+    padding-bottom: 60px;
+    box-sizing: border-box;
+}
+
+*, *::before, *::after {
+    box-sizing: inherit;
 }
 
 .header-container {
@@ -21,93 +27,124 @@ body {
 .nav-container a {
     margin: 5px 5px;
     font-size: 24px;
-    transform: translateY(-25%);
 }
 
 .projects-title {
     font-family: 'Honk', sans-serif;
-    font-size: 36px;
-    font-weight: 500;
-    text-align: center;
-    text-shadow: 2px 2px 10px rgba(0, 0, 0, 0.5);
-}
-
-
-.projects-container {
-    display: flex;
-    flex-direction: column;
-    align-items: center; 
-    position: relative;
-    margin-top: -40px;
-    margin-bottom: -120px;
-    overflow-x: hidden;
-    overflow-y: hidden;
-    width: 100%;
-    padding-bottom: 70px;
-}
-
-.project-container-left h2,
-.project-container-right h2 {
-    display: flex;
-    justify-content: center;
-    font-family: 'Honk', sans-serif;
     font-size: 48px;
     font-weight: 500;
+    text-align: center;
+    margin: 10px 16px 0;
     text-shadow: 2px 2px 10px rgba(0, 0, 0, 0.5);
-    position: relative;
-    z-index: 1;
 }
 
-.project-container-left h2 {
-    position: absolute;
-    transform: translate(150%, -300%);
-
+.project-group {
+    max-width: 1100px;
+    margin: 0 auto;
+    padding: 0 16px;
 }
 
-.project-container-right h2 {
-    position: absolute;
-    top: 50%;
-    right: 50%;
-    transform: translate(-100%, 200%);
+.group-title {
+    font-family: 'Honk', sans-serif;
+    font-size: 32px;
+    font-weight: 500;
+    margin: 40px 0 16px;
+    text-shadow: 1px 1px 6px rgba(0, 0, 0, 0.4);
 }
 
-.project-container-left img,
-.project-container-right img {
+.project-grid {
+    display: grid;
+    grid-template-columns: repeat(auto-fill, minmax(300px, 1fr));
+    gap: 28px;
+}
+
+.project-card {
     display: flex;
     flex-direction: column;
-    align-items: center;
-    border: 3px solid black;
-    width: 500px;
-    height: 300px;
-    box-shadow: 10px 10px 10px 10px rgba(0, 0, 0, 0.5);
+    background-color: aquamarine;
+    border: 2px solid black;
+    border-radius: 6px;
+    box-shadow: 6px 6px 0 0 rgba(0, 0, 0, 0.35);
+    overflow: hidden;
+    transition: transform 0.2s ease, box-shadow 0.2s ease;
+}
+
+.project-card:nth-child(odd) { transform: rotate(-1deg); }
+.project-card:nth-child(even) { transform: rotate(1deg); }
+
+.project-card:hover {
+    transform: rotate(0) translateY(-4px);
+    box-shadow: 10px 10px 0 0 rgba(0, 0, 0, 0.35);
+}
+
+.project-shot {
+    display: block;
+    border-bottom: 2px solid black;
+    aspect-ratio: 16 / 10;
+    overflow: hidden;
+    background: #0b1020;
+}
+
+.project-shot img {
+    display: block;
+    width: 100%;
+    height: 100%;
     object-fit: cover;
+    object-position: top center;
 }
 
-.project-container-left img {
-    transform: translate(-35%, 20%) rotate(-3deg);
-    z-index: 2;
+.project-body {
+    display: flex;
+    flex-direction: column;
+    align-items: flex-start;
+    gap: 8px;
+    padding: 16px 18px 20px;
+    flex: 1;
 }
 
-.project-container-right img {
-    transform: translate(30%, 10%) rotate(2deg);
-    z-index: 3;
+.project-body h3 {
+    font-family: 'Honk', sans-serif;
+    font-size: 30px;
+    font-weight: 500;
+    margin: 0;
 }
+
+.project-body p {
+    margin: 0;
+    font-size: 16px;
+    line-height: 1.45;
+}
+
+.tag {
+    display: inline-block;
+    font-family: system-ui, sans-serif;
+    font-size: 12px;
+    font-weight: 700;
+    letter-spacing: 0.04em;
+    text-transform: uppercase;
+    padding: 3px 9px;
+    border: 2px solid black;
+    border-radius: 999px;
+    background: #fff;
+}
+
+.tag--live { background: #b8f5a8; }
+.tag--dev { background: #ffe08a; }
+
+.project-link {
+    margin-top: auto;
+    padding-top: 6px;
+    font-weight: 600;
+    color: #000;
+}
+
+.project-link:hover { color: #474747; }
 
 @media (max-width: 500px) {
-    .projects-container {
-        margin-top: -80px;
-    }
-
-    .project-container-left h2,
-    .project-container-right h2 {
-        display: none;
-    }
-
-    .project-container-left {
-        transform: translate(20%, 10%);
-    }
-    .project-container-right {
-        transform: translate(-20%, 10%);
-    }
+    .nav-container { margin-left: 12px; }
+    .links-container { padding-right: 12px; }
+    .projects-title { font-size: 38px; }
+    .project-grid { grid-template-columns: 1fr; }
+    .project-card:nth-child(odd),
+    .project-card:nth-child(even) { transform: none; }
 }
-

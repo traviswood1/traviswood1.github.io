@@ -5,6 +5,7 @@
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>Travis' Projects</title>
+    <meta name="description" content="Websites, browser games and a Godot RPG built by Travis Wood.">
     <link rel="stylesheet" href="../styles/index.css">
     <link rel="stylesheet" href="../styles/my_projects.css">
     <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
@@ -18,36 +19,98 @@
         </div>
         <div class="links-container">
             <a href="LinkedIn_page" target="_blank" rel="noopener noreferrer">
-            <i class="fa-brands fa-linkedin" title="Travis' LinkedIn"></i>
-        </a>
-        <a href="https://github.com/traviswood1" target="_blank" rel="noopener noreferrer">
-            <i class="fa-brands fa-github" title="Travis' Github"></i>
+                <i class="fa-brands fa-linkedin" title="Travis' LinkedIn"></i>
+            </a>
+            <a href="https://github.com/traviswood1" target="_blank" rel="noopener noreferrer">
+                <i class="fa-brands fa-github" title="Travis' Github"></i>
             </a>
         </div>
     </div>
-    <h2 class="projects-title">My Projects</h2>
-    <div class="projects-container">
-        <div class="project-container-left">
-            <a href="projects/cc_CinemaIV/index.html" target="_blank" rel="noopener noreferrer">
-                <img class="project-img" src="../images/movie-theatre-project/movie_theatre1.JPG" alt="Project 1">
-            </a>
-            <h2>Movie Theatre</h2>
+
+    <h1 class="projects-title">My Projects</h1>
+
+    <section class="project-group">
+        <h2 class="group-title">Web design</h2>
+        <div class="project-grid">
+            <article class="project-card">
+                <a class="project-shot" href="https://itwooddsm.com/" target="_blank" rel="noopener noreferrer">
+                    <img src="../images/projects/itwood.jpg" alt="ITwood homepage" width="800" height="506" loading="lazy">
+                </a>
+                <div class="project-body">
+                    <span class="tag tag--live">Live</span>
+                    <h3>ITwood</h3>
+                    <p>My web design business in Des Moines. I build fast, phone-friendly sites for local trades, restaurants, salons and clinics. I designed and coded this site myself, with a free-mock-up form, pricing pages and a light/dark theme, and I host it on Cloudflare Pages.</p>
+                    <a class="project-link" href="https://itwooddsm.com/" target="_blank" rel="noopener noreferrer">Visit itwooddsm.com <i class="fa-solid fa-arrow-up-right-from-square"></i></a>
+                </div>
+            </article>
+            <article class="project-card">
+                <a class="project-shot" href="https://itwooddsm.com/work.html" target="_blank" rel="noopener noreferrer">
+                    <img src="../images/projects/itwood-demo.jpg" alt="Westside Family Chiropractic demo site" width="800" height="500" loading="lazy">
+                </a>
+                <div class="project-body">
+                    <span class="tag tag--live">Live</span>
+                    <h3>ITwood demo sites</h3>
+                    <p>Seven working sample sites, one for each kind of business I serve. They include a clickable "where does it hurt?" body map, a before/after slider, a quote wizard and an "open now" bar that updates itself.</p>
+                    <a class="project-link" href="https://itwooddsm.com/work.html" target="_blank" rel="noopener noreferrer">Browse the demos <i class="fa-solid fa-arrow-up-right-from-square"></i></a>
+                </div>
+            </article>
         </div>
-        <div class="project-container-right">
-            <h2>Project 2</h2>
-            <img href="#" src="../images/movie-theatre-project/movie_theatre2.JPG" alt="Project 2">
+    </section>
+
+    <section class="project-group">
+        <h2 class="group-title">Games</h2>
+        <div class="project-grid">
+            <article class="project-card">
+                <a class="project-shot" href="https://traviswood1.github.io/hexclash-play/" target="_blank" rel="noopener noreferrer">
+                    <img src="../images/projects/hex-clash.jpg" alt="Hex Clash battlefield of hex tiles on a round table" width="800" height="500" loading="lazy">
+                </a>
+                <div class="project-body">
+                    <span class="tag tag--live">Playable</span>
+                    <h3>Hex Clash</h3>
+                    <p>A 3D hex-tile tactics game that runs in the browser. Roll a random battlefield, draft start corners and units, then fight using height, terrain and unit abilities, against a friend or a computer opponent. Built with JavaScript and Three.js.</p>
+                    <a class="project-link" href="https://traviswood1.github.io/hexclash-play/" target="_blank" rel="noopener noreferrer">Play Hex Clash <i class="fa-solid fa-arrow-up-right-from-square"></i></a>
+                </div>
+            </article>
+            <article class="project-card">
+                <div class="project-shot">
+                    <img src="../images/projects/battle-chess.jpg" alt="Battle Chess board lit by torches with two armies" width="800" height="500" loading="lazy">
+                </div>
+                <div class="project-body">
+                    <span class="tag tag--dev">In development</span>
+                    <h3>Battle Chess</h3>
+                    <p>Chess where the pieces fight. Each unit has its own stats and abilities, and the board is a torch-lit dungeon with animated 3D models and spell effects. The computer opponent searches ahead, and I balanced the units by having it play itself hundreds of times. Built with Three.js.</p>
+                </div>
+            </article>
+            <article class="project-card">
+                <div class="project-shot">
+                    <img src="../images/projects/infinite-quest.jpg" alt="Infinite Quest player facing a boss and monsters in a forest" width="1000" height="563" loading="lazy">
+                </div>
+                <div class="project-body">
+                    <span class="tag tag--dev">In development</span>
+                    <h3>Infinite Quest</h3>
+                    <p>An action RPG roguelite that feels like an early-2000s console dungeon crawler. Every floor is generated from a seed, with new map layouts and new monster species in themed zones, plus loot, spells and risk pacts that make a run permadeath. Built in Godot 4 with C#, headed for Steam.</p>
+                </div>
+            </article>
         </div>
-    </div>
-    <div class="projects-container">
-        <div class="project-container-left">
-            <img href="#" src="../images/movie-theatre-project/movie_theatre3.JPG" alt="Project 1">
-            <h2>Project 3</h2>
+    </section>
+
+    <section class="project-group">
+        <h2 class="group-title">Earlier work</h2>
+        <div class="project-grid">
+            <article class="project-card">
+                <a class="project-shot" href="projects/cc_CinemaIV/index.html" target="_blank" rel="noopener noreferrer">
+                    <img src="../images/movie-theatre-project/movie_theatre1.JPG" alt="Movie theatre site" loading="lazy">
+                </a>
+                <div class="project-body">
+                    <span class="tag">Class project</span>
+                    <h3>Movie Theatre</h3>
+                    <p>A multi-page site for a local cinema with now-showing posters and theatre pages, built with HTML and CSS.</p>
+                    <a class="project-link" href="projects/cc_CinemaIV/index.html" target="_blank" rel="noopener noreferrer">Open the site <i class="fa-solid fa-arrow-up-right-from-square"></i></a>
+                </div>
+            </article>
         </div>
-        <div class="project-container-right">
-            <h2>Project 4</h2>
-            <img href="#" src="../images/movie-theatre-project/movie_theatre1.JPG" alt="Project 2">
-        </div>
-    </div>
+    </section>
+
     <script src="../scripts/scripts.js"></script>
 </body>
 </html>
