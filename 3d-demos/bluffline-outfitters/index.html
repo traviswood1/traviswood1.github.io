@@ -124,7 +124,7 @@
           <li><strong>Put-in behind the shop</strong><span class="mile">Mile 0</span><p>We help you load up and push off. The first mile is slow, flat water to get used to steering.</p></li>
           <li><strong>Cold Spring bend</strong><span class="mile">Mile 3</span><p>A spring comes out of the bluff here. The water is cold all summer and clear enough to see the bottom.</p></li>
           <li><strong>Gravel bar lunch</strong><span class="mile">Mile 5.5</span><p>A wide, shaded gravel bar, the best spot to pull out, eat, and swim.</p></li>
-          <li><strong>Take-out at Mill Bridge</strong><span class="mile">Mile 9</span><p>Our van waits at the landing and drives you back to your car.</p></li>
+          <li><strong>Take-out at Mill Bridge</strong><span class="mile">Mile 9</span><p>Pull out under the old stone bridge, next to the water mill. Our van waits at the landing and drives you back to your car.</p></li>
         </ol>
       </aside>
       <span class="pin-label" data-stop="0">Put-in</span>
@@ -250,9 +250,11 @@ function heightAt(x, z) {
   const cone = new THREE.ConeGeometry(0.55, 1.7, 6); cone.translate(0, 0.85, 0);
   const trees = new THREE.InstancedMesh(cone, new THREE.MeshLambertMaterial({ color: 0xffffff, flatShading: true }), 2600);
   const d = new THREE.Object3D(), c = new THREE.Color(); let n = 0;
+  const clear = [[0.18, 7], [0.872, 6.5], [0.912, 8]].map(([t, r]) => [river.getPointAt(t), r]); // keep the shop, bridge and mill out of the woods
   for (let k = 0; k < 9000 && n < 2600; k++) {
     const x = (Math.random() - 0.5) * 110, z = (Math.random() - 0.5) * 110;
     if (Math.hypot(x, z) > 52) continue;
+    if (clear.some(([q, r]) => Math.hypot(q.x - x, q.z - z) < r)) continue;
     const h = heightAt(x, z);
     if (h < 1.4 || fbm(x * 0.09 + 7, z * 0.09) < 0.42) continue;
     const s = 0.45 + Math.random() * 0.45;
@@ -340,39 +342,95 @@ function canoeHull(L, W, D) {
 function makeCanoe(color, withCrew) {
   const c = new THREE.Group(), L = 3.4, W = 0.42, D = 0.3;
   const { geo, rim } = canoeHull(L, W, D);
-  c.add(new THREE.Mesh(geo, new THREE.MeshLambertMaterial({ color, side: THREE.DoubleSide })));
-  const wood = lam(0x8a5a2b);
-  for (const r of rim) c.add(new THREE.Mesh(new THREE.TubeGeometry(new THREE.CatmullRomCurve3(r), 40, 0.035, 5), wood)); // gunwales
-  for (const [z, w] of [[-1.05, 0.62], [0, 0.82], [1.0, 0.64]]) box(w, 0.04, 0.16, z === 0 ? wood : lam(0xc9b38a), 0, -0.05, z, c); // seats + yoke
+  // painted outside, pale fiberglass inside
+  c.add(new THREE.Mesh(geo, new THREE.MeshLambertMaterial({ color, side: THREE.FrontSide })));
+  c.add(new THREE.Mesh(geo, new THREE.MeshLambertMaterial({ color: 0xe8dcc2, side: THREE.BackSide })));
+  const wood = lam(0x8a5a2b), ash = lam(0xc9a46a), cane = lam(0xd9c38f);
+  for (const r of rim) {
+    c.add(new THREE.Mesh(new THREE.TubeGeometry(new THREE.CatmullRomCurve3(r), 48, 0.035, 6), wood)); // gunwales
+    const low = r.map(v => new THREE.Vector3(v.x * 1.02, v.y - 0.07, v.z * 0.97));
+    c.add(new THREE.Mesh(new THREE.TubeGeometry(new THREE.CatmullRomCurve3(low), 48, 0.014, 4), lam(0xf1ead7))); // pinstripe
+  }
+  // ribs following the hull inside
+  for (let k = 1; k < 12; k++) {
+    const u = 0.14 + k * 0.06; if (Math.abs(u - 0.5) < 0.04) continue;
+    const s = Math.sin(Math.PI * u), w = W * Math.pow(s, 0.65) * 0.95, d = (D * Math.pow(s, 0.35) + 0.02) * 0.95, sh = 0.16 * Math.pow(2 * u - 1, 4), z = (u - 0.5) * L;
+    const pts = []; for (let j = 0; j <= 8; j++) { const a = Math.PI * j / 8; pts.push(new THREE.Vector3(Math.cos(a) * w, sh - 0.01 - Math.sin(a) * d, z)); }
+    c.add(new THREE.Mesh(new THREE.TubeGeometry(new THREE.CatmullRomCurve3(pts), 12, 0.012, 4), ash));
+  }
+  // bow and stern deck plates with carry handles
+  for (const s of [-1, 1]) {
+    const tri = new THREE.Shape(); tri.moveTo(-0.13, 0); tri.lineTo(0.13, 0); tri.lineTo(0, 0.42); tri.closePath();
+    const dk = new THREE.Mesh(new THREE.ShapeGeometry(tri), new THREE.MeshLambertMaterial({ color: 0x8a5a2b, side: THREE.DoubleSide })); dk.rotation.x = s * Math.PI / 2; dk.position.set(0, 0.07, s * (L / 2 - 0.55)); c.add(dk);
+    const h = new THREE.Mesh(new THREE.TorusGeometry(0.06, 0.012, 5, 12, Math.PI), ash); h.position.set(0, 0.07, s * (L / 2 - 0.6)); c.add(h);
+  }
+  // cane seats in ash frames, carved yoke at the middle
+  for (const z of [-1.05, 1.0]) {
+    const w = z < 0 ? 0.6 : 0.62;
+    for (const zz of [-0.1, 0.1]) box(w, 0.035, 0.035, ash, 0, -0.04, z + zz, c);
+    for (const xx of [-1, 1]) box(0.035, 0.035, 0.2, ash, xx * (w / 2 - 0.05), -0.04, z, c);
+    box(w - 0.12, 0.012, 0.16, cane, 0, -0.04, z, c);
+  }
+  const yoke = box(0.82, 0.035, 0.09, ash, 0, 0.0, 0, c);
+  for (const xx of [-0.09, 0.09]) box(0.13, 0.02, 0.15, wood, xx, 0.02, 0, c);
+  // gear: a yellow dry bag and a small cooler
+  const bag = new THREE.Mesh(new THREE.CapsuleGeometry(0.11, 0.22, 4, 10), lam(0xe8b923)); bag.rotation.z = Math.PI / 2; bag.position.set(0, -0.08, -0.45); c.add(bag);
+  box(0.26, 0.04, 0.05, lam(0x20352a), 0, -0.08, -0.45, c);
+  box(0.36, 0.2, 0.24, lam(0x2d6f8f), 0, -0.1, 0.42, c); box(0.37, 0.04, 0.25, lam(0xf1ead7), 0, 0.02, 0.42, c);
   if (withCrew) {
-    for (const [z, flip] of [[-1.0, 1], [0.95, -1]]) {
+    const skin = lam(0xd9a37e);
+    for (const [z, flip, shirt] of [[-1.0, 1, 0x4d6b45], [0.95, -1, 0x2d6f8f]]) {
       const p = new THREE.Group(); p.position.set(0, 0, z); c.add(p);
-      const vest = new THREE.Mesh(new THREE.CapsuleGeometry(0.15, 0.28, 4, 10), lam(0xf08a24)); vest.position.y = 0.22; p.add(vest);
-      const head = new THREE.Mesh(new THREE.SphereGeometry(0.11, 12, 10), lam(0xd9a37e)); head.position.y = 0.58; p.add(head);
-      const hat = new THREE.Mesh(new THREE.CylinderGeometry(0.16, 0.16, 0.025, 14), lam(0xdfe6d4)); hat.position.y = 0.66; p.add(hat);
+      const hips = new THREE.Mesh(new THREE.CapsuleGeometry(0.13, 0.1, 4, 10), lam(0x3b3f3c)); hips.position.y = 0.02; hips.rotation.x = Math.PI / 2; p.add(hips);
+      const torso = new THREE.Mesh(new THREE.CapsuleGeometry(0.13, 0.2, 4, 10), lam(shirt)); torso.position.y = 0.26; p.add(torso);
+      const vest = new THREE.Mesh(new THREE.CylinderGeometry(0.155, 0.16, 0.26, 12, 1, true), lam(0xf08a24)); vest.position.y = 0.27; p.add(vest);
+      box(0.02, 0.2, 0.01, lam(0x20352a), 0, 0.27, 0.16, p); // vest zip
+      const head = new THREE.Mesh(new THREE.SphereGeometry(0.105, 14, 10), skin); head.position.y = 0.56; p.add(head);
+      const crown = new THREE.Mesh(new THREE.SphereGeometry(0.1, 14, 8, 0, Math.PI * 2, 0, Math.PI / 2), lam(0xdfe6d4)); crown.position.y = 0.6; p.add(crown);
+      const brim = new THREE.Mesh(new THREE.CylinderGeometry(0.19, 0.19, 0.015, 18), lam(0xdfe6d4)); brim.position.y = 0.61; p.add(brim);
+      for (const xx of [-0.07, 0.07]) { const leg = new THREE.Mesh(new THREE.CapsuleGeometry(0.05, 0.3, 3, 8), lam(0x3b3f3c)); leg.rotation.x = Math.PI / 2; leg.position.set(xx, -0.02, 0.24); p.add(leg); }
+      // paddle: shaft, T-grip, rounded blade
       const paddle = new THREE.Group(); paddle.position.set(0, 0.3, 0.12); p.add(paddle);
-      const shaft = new THREE.Mesh(new THREE.CylinderGeometry(0.022, 0.022, 1.3, 6), wood); paddle.add(shaft);
-      const blade = box(0.17, 0.42, 0.03, wood, 0, -0.78, 0, paddle);
-      paddle.userData = { flip }; p.userData.paddle = paddle;
+      paddle.add(new THREE.Mesh(new THREE.CylinderGeometry(0.02, 0.022, 1.3, 6), ash));
+      box(0.12, 0.035, 0.04, ash, 0, 0.66, 0, paddle);
+      const bs = new THREE.Shape(); bs.moveTo(-0.03, 0.22); bs.quadraticCurveTo(-0.1, 0.1, -0.09, -0.12); bs.quadraticCurveTo(-0.08, -0.24, 0, -0.25); bs.quadraticCurveTo(0.08, -0.24, 0.09, -0.12); bs.quadraticCurveTo(0.1, 0.1, 0.03, 0.22); bs.closePath();
+      const blade = new THREE.Mesh(new THREE.ExtrudeGeometry(bs, { depth: 0.02, bevelEnabled: false }), wood); blade.position.set(0, -0.82, -0.01); paddle.add(blade);
+      // arms reach from the shoulders to the grip and the shaft, updated every frame
+      const arms = [-1, 1].map(sx => { const m = new THREE.Mesh(new THREE.CylinderGeometry(0.035, 0.04, 1, 6), lam(shirt)); p.add(m); const hand = new THREE.Mesh(new THREE.SphereGeometry(0.045, 8, 6), skin); p.add(hand); return { m, hand, sx }; });
+      paddle.userData = { flip, arms, body: p };
+      p.userData.paddle = paddle;
     }
   }
   return c;
 }
+const armY = new THREE.Vector3(0, 1, 0), aS = new THREE.Vector3(), aH = new THREE.Vector3();
+function poseArms(pd) {
+  const { flip, arms, body } = pd.userData;
+  for (const a of arms) {
+    // the arm on the paddle side holds the shaft low, the other holds the grip
+    aH.set(0, a.sx === flip ? 0.05 : 0.62, 0); pd.localToWorld(aH); body.worldToLocal(aH);
+    aS.set(a.sx * 0.15, 0.4, 0.02);
+    const dir = aH.clone().sub(aS), len = dir.length();
+    a.m.position.copy(aS).addScaledVector(dir, 0.5); a.m.scale.set(1, len, 1); a.m.quaternion.setFromUnitVectors(armY, dir.normalize());
+    a.hand.position.copy(aH);
+  }
+}
 const canoe = makeCanoe(0xc8432a, true); canoe.scale.setScalar(1.15); scene.add(canoe);
 const paddlers = canoe.children.filter(o => o.userData.paddle).map(o => o.userData.paddle);
 
+function boardTex(col) {
+  const c = document.createElement('canvas'); c.width = 256; c.height = 128; const g = c.getContext('2d');
+  g.fillStyle = col; g.fillRect(0, 0, 256, 128);
+  for (let x = 0; x < 256; x += 16) { g.fillStyle = 'rgba(40,22,8,.35)'; g.fillRect(x, 0, 3, 128); g.fillStyle = 'rgba(255,220,170,.08)'; g.fillRect(x + 3, 0, 2, 128); }
+  const t = new THREE.CanvasTexture(c); t.colorSpace = THREE.SRGBColorSpace; t.wrapS = THREE.RepeatWrapping; t.repeat.set(2, 1); return t;
+}
 const sideOf = (t, dist) => { const p = river.getPointAt(t), tan = river.getTangentAt(t); return p.add(new THREE.Vector3(-tan.z, 0, tan.x).multiplyScalar(dist)); };
 
 // outfitter shop at the put-in: board-and-batten walls, gable roof, porch, sign, canoe rack
 {
   const at = sideOf(T0, 4.6), shop = new THREE.Group(); shop.position.set(at.x, heightAt(at.x, at.z) - 0.1, at.z); scene.add(shop);
   const tan = river.getTangentAt(T0); shop.rotation.y = Math.atan2(tan.x, tan.z); shop.name = 'shop'; // local +x faces the river
-  const boards = (() => {
-    const c = document.createElement('canvas'); c.width = 256; c.height = 128; const g = c.getContext('2d');
-    g.fillStyle = '#8a5a2b'; g.fillRect(0, 0, 256, 128);
-    for (let x = 0; x < 256; x += 16) { g.fillStyle = 'rgba(40,22,8,.35)'; g.fillRect(x, 0, 3, 128); g.fillStyle = 'rgba(255,220,170,.08)'; g.fillRect(x + 3, 0, 2, 128); }
-    const t = new THREE.CanvasTexture(c); t.colorSpace = THREE.SRGBColorSpace; t.wrapS = THREE.RepeatWrapping; t.repeat.set(2, 1); return t;
-  })();
+  const boards = boardTex('#8a5a2b');
   const wall = new THREE.MeshLambertMaterial({ map: boards }), trim = lam(0xe9e4d0), dark = lam(0x1d2a24), roofMat = lam(0x2b3f33);
   const LW = 3.4, DW = 2.2, HW = 1.4, RISE = 0.85;
   box(DW + 0.3, 0.3, LW + 0.3, lam(0x8b8f86), 0, 0.15, 0, shop);                           // stone footing
@@ -412,37 +470,107 @@ const sideOf = (t, dist) => { const p = river.getPointAt(t), tan = river.getTang
   [0x2d6f8f, 0xf08a24, 0x4d6b45].forEach((col, i) => {
     const b = makeCanoe(col, false); b.scale.setScalar(0.85); b.rotation.z = Math.PI; b.position.set(0, 0.62 + i * 0.45, 0); rack.add(b);
   });
-  // wooden launch dock out to the water
-  const plank = lam(0x9a6a3c);
-  for (let x = DW / 2 + 1.5; x < DW / 2 + 4.4; x += 0.22) box(0.18, 0.06, 1.1, plank, x, 0.36, 0, shop);
-  for (const x of [DW / 2 + 2.4, DW / 2 + 4.3]) for (const z of [-0.5, 0.5]) box(0.1, 0.7, 0.1, lam(0x6e4a2a), x, 0.05, z, shop);
+  // launch dock: a walkway off the porch, then a landing along the bank that runs upstream past the canoe's stern
+  const plank = lam(0x9a6a3c), post = lam(0x6e4a2a), DY = 0.36;
+  for (let x = DW / 2 + 1.4; x < 3.45; x += 0.22) box(0.18, 0.06, 0.9, plank, x, DY, -0.9, shop);           // walkway
+  for (let z = -3.4; z < 0.5; z += 0.22) box(0.62, 0.06, 0.18, plank, 3.66, DY, z, shop);                    // landing
+  for (const x of [3.36, 3.96]) box(0.07, 0.07, 3.95, post, x, DY - 0.06, -1.5, shop);                        // stringers
+  for (const x of [3.36, 3.96]) for (const z of [-3.45, -1.5, 0.45]) {
+    box(0.11, 1.0, 0.11, post, x, DY + 0.05, z, shop);                                                       // pilings
+    const cap = new THREE.Mesh(new THREE.CylinderGeometry(0.065, 0.065, 0.03, 8), lam(0x3b3f3c)); cap.position.set(x, DY + 0.56, z); shop.add(cap);
+  }
+  for (const x of [2.7, 3.2]) for (const z of [-1.3, -0.5]) box(0.09, 0.7, 0.09, post, x, 0.05, z, shop);
+  // cleats and a coiled bow line, a spare paddle and two life vests waiting on the landing
+  for (const z of [-2.2, 0.0]) box(0.05, 0.04, 0.18, lam(0x8b8f86), 3.92, DY + 0.05, z, shop);
+  const coil = new THREE.Mesh(new THREE.TorusGeometry(0.1, 0.02, 5, 14), lam(0xe6dcc0)); coil.rotation.x = Math.PI / 2; coil.position.set(3.6, DY + 0.05, -2.7); shop.add(coil);
+  box(0.06, 0.03, 1.1, lam(0xc9a46a), 3.5, DY + 0.05, -1.6, shop);
+  for (const z of [-3.0, -2.75]) box(0.28, 0.06, 0.22, lam(0xf08a24), 3.62, DY + 0.06, z, shop);
 }
 
-// Mill Bridge at the take-out: steel pony truss across the river on concrete abutments
+// Mill Bridge at the take-out: an old three-arch limestone bridge, with the water mill on the far bank
+function stoneTex(base, mortar) {
+  const c = document.createElement('canvas'); c.width = 256; c.height = 256; const g = c.getContext('2d');
+  g.fillStyle = mortar; g.fillRect(0, 0, 256, 256);
+  for (let y = 0, row = 0; y < 256; y += 32, row++) for (let x = -(row % 2) * 24; x < 256; x += 48) {
+    const v = (hash(x, y) - 0.5) * 26; g.fillStyle = `rgb(${base.map(n => Math.round(n + v)).join(',')})`;
+    g.fillRect(x + 2, y + 2, 44, 28);
+  }
+  const t = new THREE.CanvasTexture(c); t.colorSpace = THREE.SRGBColorSpace; t.wrapS = t.wrapT = THREE.RepeatWrapping; t.repeat.set(0.6, 0.6); return t;
+}
+const millT = Math.min(1, T1 + 0.012);
 {
-  const t = Math.min(1, T1 + 0.012), p = river.getPointAt(t), tan = river.getTangentAt(t);
-  const bridge = new THREE.Group(); bridge.position.set(p.x, 0, p.z); bridge.rotation.y = Math.atan2(tan.x, tan.z); scene.add(bridge); bridge.name = 'bridge'; // local x spans the river
-  const concrete = lam(0x9a9d92), steel = lam(0x4d5f55), asphalt = lam(0x3b3f3c), stripe = lam(0xe6c34a);
-  const SPAN = 10, Y = 1.5;
-  box(SPAN, 0.3, 2.0, concrete, 0, Y - 0.15, 0, bridge);                       // deck slab
-  box(SPAN, 0.04, 1.7, asphalt, 0, Y + 0.02, 0, bridge);                       // road surface
-  for (let x = -SPAN / 2 + 0.4; x < SPAN / 2; x += 0.9) box(0.45, 0.01, 0.06, stripe, x, Y + 0.045, 0, bridge); // center line
-  for (const x of [-SPAN / 2 + 0.3, SPAN / 2 - 0.3]) box(0.8, Y + 0.6, 2.4, concrete, x, (Y - 0.6) / 2, 0, bridge); // abutments
-  for (const x of [-1.5, 1.5]) {                                               // river piers with pointed cutwaters
-    box(0.45, Y, 1.4, concrete, x, Y / 2 - 0.3, 0, bridge);
-    for (const s of [-1, 1]) { const cw = new THREE.Mesh(new THREE.CylinderGeometry(0.32, 0.32, Y, 3), concrete); cw.position.set(x, Y / 2 - 0.3, s * 0.72); cw.rotation.y = s > 0 ? Math.PI / 6 : -Math.PI / 6 + Math.PI; bridge.add(cw); }
+  const p = river.getPointAt(millT), tan = river.getTangentAt(millT);
+  const bridge = new THREE.Group(); bridge.position.set(p.x, 0, p.z); bridge.rotation.y = Math.atan2(tan.x, tan.z); scene.add(bridge); bridge.name = 'bridge'; bridge.updateMatrixWorld(); // local x spans the river
+  const stone = new THREE.MeshLambertMaterial({ map: stoneTex([176, 168, 146], '#7d776a') }), cap = lam(0xb9b29c), road = lam(0x8f7a5a);
+  const HALF = 4.8, Y = 1.75, DEP = 1.9;
+  // elevation with arch openings, extruded across the road width
+  const face = new THREE.Shape(); face.moveTo(-HALF, -1.2); face.lineTo(HALF, -1.2); face.lineTo(HALF, Y); face.lineTo(-HALF, Y); face.closePath();
+  const arch = (cx, w, spring) => { const h = new THREE.Path(); h.moveTo(cx - w / 2, -1.2); h.lineTo(cx - w / 2, spring); h.absarc(cx, spring, w / 2, Math.PI, 0, true); h.lineTo(cx + w / 2, -1.2); h.closePath(); return h; };
+  face.holes.push(arch(0, 2.5, 0.2), arch(-2.45, 1.3, 0.05), arch(2.45, 1.3, 0.05));
+  const body = new THREE.Mesh(new THREE.ExtrudeGeometry(face, { depth: DEP, bevelEnabled: false, curveSegments: 18 }), stone); body.position.z = -DEP / 2; bridge.add(body);
+  // voussoir rings around the arches
+  for (const [cx, w, spring] of [[0, 2.5, 0.2], [-2.45, 1.3, 0.05], [2.45, 1.3, 0.05]]) for (const z of [-DEP / 2 - 0.02, DEP / 2 + 0.02]) {
+    const ring = new THREE.Mesh(new THREE.RingGeometry(w / 2, w / 2 + 0.22, 20, 1, 0, Math.PI), cap); ring.position.set(cx, spring, z); if (z < 0) ring.rotation.y = Math.PI; bridge.add(ring);
   }
-  // two trusses, one on each side of the road
-  const H = 0.75, BAY = 1.0;
-  for (const z of [-0.95, 0.95]) {
-    box(SPAN - 0.6, 0.1, 0.1, steel, 0, Y + 0.1, z, bridge);                   // bottom chord
-    box(SPAN - 1.6, 0.12, 0.12, steel, 0, Y + 0.1 + H, z, bridge);             // top chord
-    for (const s of [-1, 1]) { const end = box(Math.hypot(0.5, H), 0.12, 0.12, steel, s * (SPAN / 2 - 1.05), Y + 0.1 + H / 2, z, bridge); end.rotation.z = s * Math.atan2(H, 0.5); }
-    for (let x = -SPAN / 2 + 1.3; x <= SPAN / 2 - 1.3 + 0.01; x += BAY) {
-      box(0.07, H, 0.07, steel, x, Y + 0.1 + H / 2, z, bridge);                // verticals
-      if (x < SPAN / 2 - 1.3 - 0.01) { const dg = box(Math.hypot(BAY, H), 0.05, 0.05, steel, x + BAY / 2, Y + 0.1 + H / 2, z, bridge); dg.rotation.z = (x < 0 ? 1 : -1) * Math.atan2(H, BAY); }
-    }
+  // cutwaters on the river piers, upstream and down
+  for (const x of [-1.25 - 0.32, 1.25 + 0.32]) for (const s of [-1, 1]) {
+    const cw = new THREE.Mesh(new THREE.CylinderGeometry(0.45, 0.45, 1.5, 3), stone); cw.position.set(x, -0.25, s * (DEP / 2)); cw.rotation.y = s > 0 ? -Math.PI / 6 : Math.PI / 6; cw.scale.set(0.7, 1, 1); bridge.add(cw);
+    const top = new THREE.Mesh(new THREE.ConeGeometry(0.45, 0.4, 3), cap); top.position.set(x, 0.7, s * (DEP / 2)); top.rotation.y = cw.rotation.y; top.scale.set(0.7, 1, 1); bridge.add(top);
   }
+  // parapets with coping stones, gravel road, ramps down to each bank
+  for (const z of [-DEP / 2 + 0.12, DEP / 2 - 0.12]) {
+    box(HALF * 2, 0.42, 0.24, stone, 0, Y + 0.21, z, bridge);
+    box(HALF * 2 + 0.08, 0.07, 0.32, cap, 0, Y + 0.45, z, bridge);
+  }
+  box(HALF * 2, 0.03, DEP - 0.48, road, 0, Y + 0.015, 0, bridge);
+  for (const s of [-1, 1]) {
+    // short dirt approach meeting the bank, and wing walls flaring out from the parapets
+    const run = 1.6, gnd = heightAt(...(v => [v.x, v.z])(bridge.localToWorld(new THREE.Vector3(s * (HALF + run), 0, 0))));
+    const drop = Y - gnd;
+    const ramp = box(Math.hypot(run, drop) + 0.3, 0.12, DEP - 0.5, road, s * (HALF + run / 2), Y - drop / 2 - 0.04, 0, bridge); ramp.rotation.z = s * -Math.atan2(drop, run);
+    for (const z of [-1, 1]) { const w = box(1.1, 0.5, 0.24, stone, s * (HALF + 0.45), Y + 0.1, z * (DEP / 2 + 0.12), bridge); w.rotation.y = s * z * -0.35; }
+  }
+}
+
+// the water mill: stone foundation, board-and-batten mill house, a turning wheel in the river
+let wheel;
+{
+  const t = Math.min(1, millT + 0.04), p = river.getPointAt(t), tan = river.getTangentAt(t);
+  const mill = new THREE.Group(); mill.position.set(p.x, 0, p.z); mill.rotation.y = Math.atan2(tan.x, tan.z); scene.add(mill); mill.name = 'mill'; // local +x is the far bank
+  const stone = new THREE.MeshLambertMaterial({ map: stoneTex([160, 150, 128], '#6e685c') });
+  const red = new THREE.MeshLambertMaterial({ map: boardTex('#8e3b2a') }), redGable = new THREE.MeshLambertMaterial({ map: boardTex('#8e3b2a'), side: THREE.DoubleSide });
+  const trim = lam(0xe9e4d0), roof = lam(0x4a4a44), wood = lam(0x6e4a2a), dark = lam(0x1d2a24);
+  const X0 = 3.6, LD = 3.0, DD = 2.6, BASE = 1.4, HW = 1.7, RISE = 1.1;
+  // ground can be uneven, so the foundation reaches well below it
+  box(DD + 0.2, BASE + 1.5, LD + 0.2, stone, X0, BASE / 2 - 0.75, 0, mill);
+  box(DD, HW, LD, red, X0, BASE + HW / 2, 0, mill);
+  const gable = new THREE.Shape(); gable.moveTo(-DD / 2, 0); gable.lineTo(DD / 2, 0); gable.lineTo(0, RISE); gable.closePath();
+  for (const z of [-LD / 2, LD / 2]) { const gm = new THREE.Mesh(new THREE.ShapeGeometry(gable), redGable); gm.position.set(X0, BASE + HW, z); mill.add(gm); }
+  const slope = Math.atan2(RISE, DD / 2), slab = Math.hypot(DD / 2, RISE) + 0.3;
+  for (const s of [-1, 1]) { const r = box(slab, 0.08, LD + 0.45, roof, X0 + s * (DD / 4 + 0.07), BASE + HW + RISE / 2 + 0.02, 0, mill); r.rotation.z = -s * slope; }
+  box(0.12, 0.12, LD + 0.45, trim, X0, BASE + HW + RISE + 0.03, 0, mill);
+  // hoist beam and loft door on the gable, windows on the river wall
+  box(0.12, 0.12, 0.7, wood, X0, BASE + HW + 0.75, LD / 2 + 0.3, mill);
+  box(0.55, 0.7, 0.05, trim, X0, BASE + HW + 0.25, LD / 2 + 0.02, mill); box(0.45, 0.6, 0.06, dark, X0, BASE + HW + 0.25, LD / 2 + 0.02, mill);
+  const fx = X0 - DD / 2 - 0.01;
+  for (const z of [-0.85, 0.85]) for (const y of [BASE + 0.55, BASE + 1.25]) { box(0.06, 0.48, 0.42, trim, fx, y, z, mill); box(0.07, 0.4, 0.34, lam(0x4f7f93), fx - 0.005, y, z, mill); }
+  box(0.06, 1.1, 0.7, dark, X0 + DD / 2 + 0.01, BASE + 0.55, 0, mill);                      // door on the road side
+  box(0.2, 0.2, 0.2, trim, X0 + DD / 2 + 0.1, BASE - 0.2, 0, mill);
+  // waterwheel between the mill wall and the channel, axle into the wall
+  wheel = new THREE.Group(); wheel.position.set(0.95, 1.05, 0); mill.add(wheel);
+  const R = 1.15;
+  for (const x of [-0.22, 0.22]) {
+    const rimRing = new THREE.Mesh(new THREE.TorusGeometry(R, 0.05, 6, 32), wood); rimRing.rotation.y = Math.PI / 2; rimRing.position.x = x; wheel.add(rimRing);
+    for (let i = 0; i < 8; i++) { const sp = box(0.05, R * 2, 0.06, wood, x, 0, 0, wheel); sp.rotation.x = i * Math.PI / 8; }
+  }
+  for (let i = 0; i < 16; i++) { const a = i * Math.PI / 8, pd = box(0.5, 0.05, 0.24, lam(0x8a5a2b), 0, Math.cos(a) * (R - 0.06), Math.sin(a) * (R - 0.06), wheel); pd.rotation.x = a; }
+  const axle = new THREE.Mesh(new THREE.CylinderGeometry(0.08, 0.08, X0 - DD / 2 - 0.7, 8), dark); axle.rotation.z = Math.PI / 2; axle.position.set((0.95 + X0 - DD / 2) / 2 + 0.1, 1.05, 0); mill.add(axle);
+  box(0.4, 1.3, 0.3, stone, 1.85 + 0.25, 0.3, 0, mill);                                    // axle pier
+  // wooden flume bringing the race in from upstream onto the wheel
+  const fl = box(0.6, 0.12, 3.2, wood, 0.95, 2.32, -2.2, mill); fl.rotation.x = 0.06;
+  for (const x of [0.67, 1.23]) { const w = box(0.05, 0.25, 3.2, wood, x, 2.42, -2.2, mill); w.rotation.x = 0.06; }
+  for (const z of [-3.5, -2.3]) for (const x of [0.7, 1.2]) box(0.08, 2.4, 0.08, wood, x, 1.15, z, mill);
+  const fall = new THREE.Mesh(new THREE.PlaneGeometry(0.5, 0.6), new THREE.MeshBasicMaterial({ color: 0x9fd0dc, transparent: true, opacity: 0.7, side: THREE.DoubleSide })); fall.position.set(0.95, 2.0, -0.62); fall.rotation.x = -0.3; mill.add(fall);
 }
 
 // scroll
@@ -514,8 +642,8 @@ renderer.setAnimationLoop(() => {
   camPos.copy(over.pos).lerp(chasePos, blend);
   camLook.copy(over.look).lerp(chaseLook, blend);
   camera.position.copy(camPos); camera.lookAt(camLook);
-  const closeUp = new URLSearchParams(location.search).get('look'); // ?look=shop|bridge|canoe for close-up checks
-  if (closeUp) { const o = closeUp === 'canoe' ? canoe : scene.getObjectByName(closeUp); const c = new THREE.Vector3(); o.getWorldPosition(c); camera.position.copy(o.localToWorld(new THREE.Vector3(8, 5, 5))); camera.lookAt(c.x, c.y + 0.8, c.z); }
+  const closeUp = new URLSearchParams(location.search).get('look'); // ?look=shop|bridge|mill|canoe for close-up checks
+  if (closeUp) { const o = closeUp === 'canoe' ? canoe : scene.getObjectByName(closeUp); const c = new THREE.Vector3(); o.getWorldPosition(c); camera.position.copy(o.localToWorld(closeUp === 'mill' ? new THREE.Vector3(-6, 4, 6) : new THREE.Vector3(8, 5, 5))); camera.lookAt(c.x, c.y + 0.8, c.z); }
 
   waterMat.uniforms.time.value += reduce ? 0 : dt;
   const cp = route.getPointAt(t), ct = route.getTangentAt(t);
@@ -526,6 +654,8 @@ renderer.setAnimationLoop(() => {
     const a = reduce ? 0 : clock.elapsedTime * 2.4 + i * Math.PI;
     pd.position.x = pd.userData.flip * 0.34; pd.rotation.z = pd.userData.flip * 0.3; pd.rotation.x = Math.sin(a) * 0.55;
   });
+  canoe.updateMatrixWorld(true); paddlers.forEach(poseArms);
+  if (!reduce) wheel.rotation.x -= dt * 0.9;
   routeGeo.setDrawRange(0, Math.floor(routeTotal * clamp(t - 0.022, 0, 1) / 3) * 3); // ends at the canoe's stern
   renderer.render(scene, camera);
 
