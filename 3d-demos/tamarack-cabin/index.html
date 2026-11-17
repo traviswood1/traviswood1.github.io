@@ -33,7 +33,9 @@
 
   .stage { position: relative; }
   .sticky { position: sticky; top: 0; height: 100vh; overflow: hidden; }
-  canvas { display: block; width: 100%; height: 100%; }
+  canvas { display: block; width: 100%; height: 100%; opacity: 0; transition: opacity .9s ease; }
+  canvas.ready { opacity: 1; }
+  @media (prefers-reduced-motion: reduce) { canvas { transition: none; } }
 
   .intro {
     position: absolute; left: 0; right: 0; top: 17vh; text-align: center; color: var(--birch);
@@ -50,9 +52,9 @@
   .step:first-child { height: 120vh; }
   .note {
     pointer-events: auto; max-width: 25rem; background: var(--birch); padding: 26px 28px 28px;
-    border-left: 6px solid var(--cedar);
+    border-radius: 6px;
   }
-  .note h2 { font: 400 clamp(1.7rem, 3vw, 2.3rem)/1.1 "Young Serif", serif; margin: 0 0 10px; }
+  .note h2 { font: 400 clamp(1.7rem, 3vw, 2.3rem)/1.1 "Young Serif", serif; margin: 0 0 10px; color: var(--cedar); }
   .note p { margin: 0; color: var(--ink-soft); }
 
   .label {
@@ -69,7 +71,9 @@
   .rate strong { font: 400 2.2rem/1 "Young Serif", serif; color: var(--cedar); margin-right: 6px; }
   form { display: grid; grid-template-columns: 1fr 1fr; gap: 16px; align-content: start; }
   label { display: grid; gap: 6px; font-weight: 800; font-size: .95rem; }
+  .booking-inner > *, label { min-width: 0; }
   input, select {
+    width: 100%;
     font: inherit; padding: 12px 14px; border: 2px solid var(--dusk); border-radius: 4px; background: #fff; color: var(--dusk);
   }
   label.wide, button { grid-column: 1 / -1; }
@@ -85,6 +89,7 @@
   @media (max-width: 760px) {
     .intro { top: 12vh; }
     .booking-inner { grid-template-columns: 1fr; }
+    form { grid-template-columns: 1fr; }
     .step { padding-bottom: 6vh; }
     .note { padding: 20px; }
     .label { font-size: .78rem; }
@@ -159,6 +164,10 @@
 </script>
 <script type="module">
 import * as THREE from 'three';
+import { EffectComposer } from 'three/addons/postprocessing/EffectComposer.js';
+import { RenderPass } from 'three/addons/postprocessing/RenderPass.js';
+import { UnrealBloomPass } from 'three/addons/postprocessing/UnrealBloomPass.js';
+import { OutputPass } from 'three/addons/postprocessing/OutputPass.js';
 
 // booking form (demo only)
 document.getElementById('dates').addEventListener('submit', e => {
@@ -182,6 +191,11 @@ renderer.toneMapping = THREE.ACESFilmicToneMapping;
 const scene = new THREE.Scene();
 scene.fog = new THREE.Fog(0xb9c4c9, 40, 120);
 const camera = new THREE.PerspectiveCamera(38, 1, 0.1, 400);
+const composer = new EffectComposer(renderer);
+composer.addPass(new RenderPass(scene, camera));
+const bloom = new UnrealBloomPass(new THREE.Vector2(256, 256), 0.2, 0.5, 0.88);
+composer.addPass(bloom);
+composer.addPass(new OutputPass());
 
 const sun = new THREE.DirectionalLight(0xffffff, 3);
 sun.castShadow = true;
@@ -189,7 +203,8 @@ sun.shadow.mapSize.set(2048, 2048);
 Object.assign(sun.shadow.camera, { left: -22, right: 22, top: 22, bottom: -22, far: 120 });
 sun.shadow.bias = -0.0005;
 const hemi = new THREE.HemisphereLight(0xcfdde6, 0x56633f, 1);
-scene.add(sun, sun.target, hemi);
+const moon = new THREE.DirectionalLight(0x8fa8d8, 0); moon.position.set(-12, 22, -30);
+scene.add(sun, sun.target, hemi, moon);
 
 function m(geo, mat, x = 0, y = 0, z = 0, parent = scene) {
   const o = new THREE.Mesh(geo, mat); o.position.set(x, y, z); o.castShadow = o.receiveShadow = true; parent.add(o); return o;
@@ -199,11 +214,12 @@ function m(geo, mat, x = 0, y = 0, z = 0, parent = scene) {
 const groundGeo = new THREE.PlaneGeometry(240, 240, 160, 160);
 groundGeo.rotateX(-Math.PI / 2);
 const gp = groundGeo.attributes.position;
-for (let i = 0; i < gp.count; i++) {
-  const x = gp.getX(i), z = gp.getZ(i), d = Math.hypot(x, z);
+function groundH(x, z) {
+  const d = Math.hypot(x, z);
   const hills = Math.sin(x * 0.06) * 2.2 + Math.cos(z * 0.05 + 1) * 2.6 + Math.sin((x + z) * 0.11) * 0.8;
-  gp.setY(i, hills * THREE.MathUtils.smoothstep(d, 12, 40) - (z < -30 ? (-z - 30) * -0.25 : 0));
+  return hills * THREE.MathUtils.smoothstep(d, 12, 40) - (z < -30 ? (-z - 30) * -0.25 : 0);
 }
+for (let i = 0; i < gp.count; i++) gp.setY(i, groundH(gp.getX(i), gp.getZ(i)));
 groundGeo.computeVertexNormals();
 const groundMat = new THREE.MeshStandardMaterial({ color: 0x7d8456, roughness: 1 });
 const ground = m(groundGeo, groundMat); ground.castShadow = false;
@@ -221,10 +237,13 @@ while (placed < pineCount) {
   const x = Math.cos(a) * r, z = Math.sin(a) * r;
   if (z > 4 && Math.abs(x) < 10 + z * 0.4) continue; // keep the view to the front open
   const h = 6 + Math.random() * 7, w = h * 0.3;
-  dummy.position.set(x, -0.5, z); dummy.scale.set(w, h, w); dummy.rotation.y = Math.random() * 6; dummy.updateMatrix();
+  const gy = groundH(x, z) - 0.3;
+  dummy.position.set(x, gy, z); dummy.scale.set(w, h, w); dummy.rotation.y = Math.random() * 6; dummy.updateMatrix();
   pines.setMatrixAt(placed * 2, dummy.matrix);
-  dummy.position.y = h * 0.45; dummy.scale.set(w * 0.75, h * 0.7, w * 0.75); dummy.updateMatrix();
+  dummy.position.y = gy + h * 0.45; dummy.scale.set(w * 0.75, h * 0.7, w * 0.75); dummy.updateMatrix();
   pines.setMatrixAt(placed * 2 + 1, dummy.matrix);
+  const tint = new THREE.Color().setHSL(0.36 + Math.random() * 0.06, 0.25 + Math.random() * 0.15, 0.75 + Math.random() * 0.4);
+  pines.setColorAt(placed * 2, tint); pines.setColorAt(placed * 2 + 1, tint);
   placed++;
 }
 scene.add(pines);
@@ -279,6 +298,8 @@ const stove = m(new THREE.CylinderGeometry(0.42, 0.45, 0.9, 20), dark, 1.6, 0.65
 m(new THREE.CylinderGeometry(0.09, 0.09, 5.4, 12), dark, 1.6, 3.6, 0.8, cabin);
 m(new THREE.BoxGeometry(0.8, 0.95, 3), cedarMat, -2.0, 0.65, -2.2, cabin);        // kitchen run
 m(new THREE.BoxGeometry(1.4, 0.08, 0.9), cedarMat, 0.4, 0.95, -0.6, cabin);       // table
+const moonDisc = new THREE.Mesh(new THREE.CircleGeometry(4, 48), new THREE.MeshBasicMaterial({ color: 0xf4efe0, transparent: true, opacity: 0, fog: false }));
+moonDisc.position.set(-30, 52, -150); scene.add(moonDisc);
 const stoveGlow = new THREE.PointLight(0xff9a3c, 0, 9, 1.6); stoveGlow.position.set(1.4, 1.2, 1.2); cabin.add(stoveGlow);
 const loftLamp = new THREE.PointLight(0xffc77a, 0, 8, 1.6); loftLamp.position.set(0, loftY + 1.4, -1.5); cabin.add(loftLamp);
 
@@ -287,7 +308,65 @@ m(new THREE.BoxGeometry(W * 2 + 2, 0.25, 4), cedarMat, 0, 0.0, D / 2 + 2, cabin)
 const tub = m(new THREE.CylinderGeometry(0.95, 0.95, 0.8, 32), cedarMat, 2.4, 0.5, D / 2 + 2.4, cabin);
 const waterMat = new THREE.MeshStandardMaterial({ color: 0x4f8fa8, roughness: 0.1, emissive: 0x4fd0ff, emissiveIntensity: 0 });
 m(new THREE.CylinderGeometry(0.82, 0.82, 0.05, 32), waterMat, 2.4, 0.88, D / 2 + 2.4, cabin);
+const spill = new THREE.SpotLight(0xffb347, 0, 22, 0.95, 0.7, 1.4); spill.position.set(0, 3.2, D / 2 - 0.6); spill.target.position.set(0, 0, D / 2 + 6);
+cabin.add(spill, spill.target);
 const porchLight = new THREE.PointLight(0xffc77a, 0, 12, 1.5); porchLight.position.set(0, 2.2, D / 2 + 0.6); cabin.add(porchLight);
+
+// front door, deck railing, steps, chairs, firewood, string lights, gravel road
+const darkCedar = new THREE.MeshStandardMaterial({ color: 0x6e3f22, roughness: 0.8 });
+m(new THREE.BoxGeometry(1.1, 2.1, 0.12), darkCedar, 0, 1.25, D / 2 - 0.02, cabin);
+m(new THREE.SphereGeometry(0.05, 8, 6), new THREE.MeshStandardMaterial({ color: 0xd8c08a, metalness: 0.8, roughness: 0.3 }), 0.4, 1.2, D / 2 + 0.07, cabin);
+const deckFront = D / 2 + 3.95, deckX = W + 0.95;
+const post = new THREE.BoxGeometry(0.12, 1.0, 0.12);
+for (let x = -deckX; x <= deckX + 0.01; x += (deckX * 2) / 8) if (Math.abs(x) > 0.9) m(post, cedarMat, x, 0.6, deckFront, cabin);
+for (let z = D / 2 + 0.4; z < deckFront; z += 0.9) for (const x of [-deckX, deckX]) m(post, cedarMat, x, 0.6, z, cabin);
+for (const sx of [-1, 1]) m(new THREE.BoxGeometry(deckX - 0.85, 0.08, 0.14), cedarMat, sx * (deckX + 0.85) / 2, 1.1, deckFront, cabin);
+for (const x of [-deckX, deckX]) m(new THREE.BoxGeometry(0.14, 0.08, 3.8), cedarMat, x, 1.1, D / 2 + 2, cabin);
+m(new THREE.BoxGeometry(1.8, 0.2, 0.5), cedarMat, 0, -0.08, deckFront + 0.4, cabin);
+m(new THREE.BoxGeometry(1.8, 0.2, 0.5), cedarMat, 0, -0.26, deckFront + 0.85, cabin);
+for (const [x, r] of [[-2.6, 0.35], [-1.3, -0.25]]) {
+  const chair = new THREE.Group(); chair.position.set(x, 0.12, D / 2 + 2.6); chair.rotation.y = r; cabin.add(chair);
+  m(new THREE.BoxGeometry(0.75, 0.1, 0.8), darkCedar, 0, 0.4, 0, chair);
+  const back = m(new THREE.BoxGeometry(0.75, 0.9, 0.08), darkCedar, 0, 0.8, -0.42, chair); back.rotation.x = -0.35;
+  for (const sx of [-0.4, 0.4]) m(new THREE.BoxGeometry(0.08, 0.06, 0.85), darkCedar, sx, 0.65, 0, chair);
+}
+{
+  const log = new THREE.CylinderGeometry(0.13, 0.13, 1.1, 8); log.rotateX(Math.PI / 2);
+  const logs = new THREE.InstancedMesh(log, new THREE.MeshStandardMaterial({ color: 0x8a6a4a, roughness: 1 }), 15);
+  logs.castShadow = true; let k = 0;
+  for (let row = 0; row < 3; row++) for (let c = 0; c < 5 - row; c++) {
+    dummy.position.set(-W - 1.0, 0.15 + row * 0.24, -2.0 + (c + row / 2) * 0.27); dummy.rotation.set(0, Math.PI / 2, 0); dummy.scale.set(1, 1, 1); dummy.updateMatrix();
+    logs.setMatrixAt(k++, dummy.matrix);
+  }
+  logs.count = k; cabin.add(logs);
+}
+for (const x of [-deckX, deckX]) m(new THREE.BoxGeometry(0.12, 2.6, 0.12), cedarMat, x, 1.3, deckFront, cabin);
+const bulbMat = new THREE.MeshStandardMaterial({ color: 0x333333, emissive: 0xffc77a, emissiveIntensity: 0 });
+for (let i = 0; i <= 16; i++) {
+  const x = -deckX + (deckX * 2) * i / 16, sag = 0.45 * (1 - (x / deckX) ** 2);
+  m(new THREE.SphereGeometry(0.06, 8, 6), bulbMat, x, 2.55 - sag, deckFront, cabin).castShadow = false;
+}
+{
+  const road = new THREE.CatmullRomCurve3([[-34, 46], [-22, 34], [-12, 24], [-5, 16], [0, deckFront + 1.4]].map(([x, z]) => new THREE.Vector3(x, 0, z)));
+  const pts = road.getSpacedPoints(120), verts = [], idx = [];
+  pts.forEach((pt, i) => {
+    const t = road.getTangentAt(i / 120), sx = -t.z * 1.4, sz = t.x * 1.4;
+    verts.push(pt.x + sx, groundH(pt.x + sx, pt.z + sz) + 0.06, pt.z + sz, pt.x - sx, groundH(pt.x - sx, pt.z - sz) + 0.06, pt.z - sz);
+    if (i < 120) { const a = i * 2; idx.push(a, a + 2, a + 1, a + 1, a + 2, a + 3); }
+  });
+  const g = new THREE.BufferGeometry(); g.setAttribute('position', new THREE.Float32BufferAttribute(verts, 3)); g.setIndex(idx); g.computeVertexNormals();
+  const roadMesh = new THREE.Mesh(g, new THREE.MeshStandardMaterial({ color: 0xa89c84, roughness: 1, side: THREE.DoubleSide }));
+  roadMesh.receiveShadow = true; scene.add(roadMesh);
+}
+
+// chimney smoke (night only)
+const SMOKE = 26, smokeGeo = new THREE.BufferGeometry(), smokePos = new Float32Array(SMOKE * 3), smokeAge = Array.from({ length: SMOKE }, (_, i) => i / SMOKE);
+smokeGeo.setAttribute('position', new THREE.BufferAttribute(smokePos, 3));
+const puff = (() => { const c = document.createElement('canvas'); c.width = c.height = 64; const g = c.getContext('2d');
+  const r = g.createRadialGradient(32, 32, 0, 32, 32, 32); r.addColorStop(0, 'rgba(255,255,255,1)'); r.addColorStop(1, 'rgba(255,255,255,0)');
+  g.fillStyle = r; g.fillRect(0, 0, 64, 64); return new THREE.CanvasTexture(c); })();
+const smokeMat = new THREE.PointsMaterial({ color: 0x9aa3ab, map: puff, size: 2.6, transparent: true, opacity: 0, depthWrite: false });
+scene.add(new THREE.Points(smokeGeo, smokeMat));
 
 // stars
 const starGeo = new THREE.BufferGeometry();
@@ -306,7 +385,7 @@ const sky = [C(0x9fbfd3), C(0xe39a6b), C(0x0e1724)];
 const fogC = [C(0xb9c4c9), C(0xd59777), C(0x0e1724)];
 const sunC = [C(0xfff1d6), C(0xff9a55), C(0x6d86b8)];
 const sunI = [3.0, 2.2, 0.35];
-const hemiI = [1.0, 0.7, 0.18];
+const hemiI = [1.0, 1.0, 0.2];
 const grassC = [C(0x7d8456), C(0x7a6a46), C(0x2a3330)];
 const sunPos = [new THREE.Vector3(30, 40, 25), new THREE.Vector3(-45, 9, 30), new THREE.Vector3(-20, 30, -30)];
 
@@ -344,6 +423,7 @@ addEventListener('scroll', readScroll, { passive: true });
 function resize() {
   const w = innerWidth, h = innerHeight;
   renderer.setSize(w, h, false);
+  composer.setSize(w, h);
   camera.aspect = w / h;
   camera.fov = w > 760 ? 38 : 52;
   if (w > 760) camera.setViewOffset(w, h, -w * 0.1, 0, w, h); else camera.clearViewOffset();
@@ -351,6 +431,8 @@ function resize() {
 }
 addEventListener('resize', resize);
 resize(); readScroll();
+const qp = new URLSearchParams(location.search).get('p');
+if (qp !== null) { removeEventListener('scroll', readScroll); target = p = +qp * 3; } // ?p=0..1 freezes a scroll point for screenshots
 
 const anchors = {
   loft: new THREE.Vector3(0, loftY + 0.7, -2.4),
@@ -361,8 +443,12 @@ const anchors = {
 const labels = [...document.querySelectorAll('.label')];
 const tv = new THREE.Vector3();
 const clock = new THREE.Clock();
+let onScreen = true;
+new IntersectionObserver(([e]) => { onScreen = e.isIntersecting; }).observe(stage);
 
 renderer.setAnimationLoop(() => {
+  if (!onScreen) { clock.getDelta(); return; }
+  if (!canvas.classList.contains('ready')) requestAnimationFrame(() => canvas.classList.add('ready'));
   const dt = Math.min(clock.getDelta(), 0.05);
   p = reduce ? target : p + (target - p) * Math.min(1, dt * 5);
   mouse.x += (mouse.tx - mouse.x) * 0.05; mouse.y += (mouse.ty - mouse.y) * 0.05;
@@ -377,9 +463,21 @@ renderer.setAnimationLoop(() => {
   groundMat.color.copy(pick(grassC, t));
   const night = seg(p, 1.2, 2.0);
   starMat.opacity = night;
+  moonDisc.opacity = night; moonDisc.material.opacity = night; moonDisc.lookAt(camera.position);
+  moonDisc.position.y = 40 + night * 14;
   glassMat.emissiveIntensity = 0.15 + night * 1.1;
   waterMat.emissiveIntensity = night * 0.9;
-  stoveGlow.intensity = night * 14; loftLamp.intensity = night * 10; porchLight.intensity = night * 12;
+  bulbMat.emissiveIntensity = night * 3;
+  moon.intensity = night * 0.9;
+  spill.intensity = night * 60;
+  bloom.strength = 0.1 + night * 0.85;
+  smokeMat.opacity = night * 0.35;
+  for (let s = 0; s < SMOKE; s++) {
+    smokeAge[s] = (smokeAge[s] + dt * 0.12) % 1; const a = smokeAge[s];
+    smokePos.set([1.6 + Math.sin(a * 9 + s) * 0.3 + a * 2.2, 6.3 + a * 6, 0.8 + a * 0.8], s * 3);
+  }
+  smokeGeo.attributes.position.needsUpdate = true;
+  stoveGlow.intensity = night * 14; loftLamp.intensity = night * 5; porchLight.intensity = night * 12;
   pineMat.color.setHex(0x2f4536).lerp(tmpC.setHex(0x141c1d), night);
 
   // roof opens like a book, front glass fades
@@ -395,7 +493,7 @@ renderer.setAnimationLoop(() => {
   camera.position.x += mouse.x * 2.5; camera.position.y -= mouse.y * 1.2;
   look.fromArray(keys[i].look).lerp(vb.fromArray(keys[i + 1].look), f);
   camera.lookAt(look);
-  renderer.render(scene, camera);
+  composer.render();
 
   intro.style.opacity = 1 - seg(p, 0.15, 0.55);
   const w = innerWidth, h = innerHeight, show = seg(p, 2.65, 3.0);
