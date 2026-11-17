@@ -115,6 +115,8 @@
       <div class="label" data-at="stove">Wood stove</div>
       <div class="label" data-at="kitchen">Full kitchen</div>
       <div class="label" data-at="tub">Hot tub</div>
+      <div class="label" data-at="sofa">Sleeper sofa</div>
+      <div class="label" data-at="bunks">Bunk room</div>
     </div>
     <div class="steps">
       <div class="step"></div>
@@ -267,6 +269,7 @@ const pivots = [];
 for (const side of [-1, 1]) {
   const pivot = new THREE.Group(); pivot.position.set(side * W, 0, 0); cabin.add(pivot);
   const panel = m(new THREE.BoxGeometry(L + 0.5, 0.28, D + 0.8), roofMat, -side * (L / 2 + 0.1), 0.12, 0, pivot);
+  for (const z of [D / 2 + 0.42, -D / 2 - 0.42]) m(new THREE.BoxGeometry(L + 0.5, 0.44, 0.1), cedarMat, -side * (L / 2 + 0.1), 0.05, z, pivot); // fascia boards
   pivot.rotation.z = side < 0 ? ang : -ang;
   pivot.userData.base = pivot.rotation.z; pivot.userData.side = side;
   pivots.push(pivot);
@@ -275,6 +278,7 @@ for (const side of [-1, 1]) {
 // glass gable ends
 const tri = new THREE.Shape(); tri.moveTo(-W + 0.25, 0); tri.lineTo(W - 0.25, 0); tri.lineTo(0, H - 0.5); tri.closePath();
 const glassMat = new THREE.MeshStandardMaterial({ color: 0x31404c, roughness: 0.15, metalness: 0.3, emissive: 0xffb347, emissiveIntensity: 0, transparent: true, opacity: 0.92, side: THREE.DoubleSide });
+for (const z of [-1.6, 1.4]) m(new THREE.BoxGeometry(1.0, 0.08, 1.2), glassMat, -(L / 2 + 0.9), 0.3, z, pivots[1]); // skylights on the east roof
 const front = m(new THREE.ShapeGeometry(tri), glassMat, 0, 0.2, D / 2 - 0.15, cabin);
 const back = m(new THREE.ShapeGeometry(tri), glassMat, 0, 0.2, -D / 2 + 0.15, cabin);
 const mullionMat = new THREE.MeshStandardMaterial({ color: 0x1d2b3a, transparent: true });
@@ -289,15 +293,178 @@ m(new THREE.BoxGeometry(0.1, H - 0.6, 0.12), mullionMat, 0, (H - 0.6) / 2 + 0.2,
 m(new THREE.BoxGeometry(W * 2, 0.3, D), floorMat, 0, 0.05, 0, cabin);
 const loftY = 3.2, loftHalf = W * (1 - loftY / H) - 0.05;
 m(new THREE.BoxGeometry(loftHalf * 2, 0.2, D * 0.55), floorMat, 0, loftY, -D * 0.225, cabin);
-const sheet = new THREE.MeshStandardMaterial({ color: 0xeef0ea, roughness: 0.9 });
-const dark = new THREE.MeshStandardMaterial({ color: 0x1b1f22, roughness: 0.6, metalness: 0.4 });
-const sofaMat = new THREE.MeshStandardMaterial({ color: 0x56633f, roughness: 0.95 });
-m(new THREE.BoxGeometry(2.2, 0.45, 2.6), sheet, 0, loftY + 0.32, -2.4, cabin); // bed
-m(new THREE.BoxGeometry(2.4, 0.7, 0.9), sofaMat, -0.6, 0.55, 1.6, cabin);       // sofa
-const stove = m(new THREE.CylinderGeometry(0.42, 0.45, 0.9, 20), dark, 1.6, 0.65, 0.8, cabin);
-m(new THREE.CylinderGeometry(0.09, 0.09, 5.4, 12), dark, 1.6, 3.6, 0.8, cabin);
-m(new THREE.BoxGeometry(0.8, 0.95, 3), cedarMat, -2.0, 0.65, -2.2, cabin);        // kitchen run
-m(new THREE.BoxGeometry(1.4, 0.08, 0.9), cedarMat, 0.4, 0.95, -0.6, cabin);       // table
+// ---- interior furniture ----
+const Y0 = 0.2, Y1 = loftY + 0.1;                       // main floor top, loft floor top
+const std = (color, extra = {}) => new THREE.MeshStandardMaterial({ color, roughness: 0.8, ...extra });
+const dark = std(0x1b1f22, { roughness: 0.6, metalness: 0.4 });
+const walnut = std(0x6b4128), oak = std(0xc49a6c), linen = std(0xe8e2d4, { roughness: 0.95 });
+const rust = std(0x8c3b24, { roughness: 0.9 }), moss = std(0x56633f, { roughness: 0.95 }), ochre = std(0xc9963a, { roughness: 0.95 });
+const steel = std(0xb9bec2, { metalness: 0.8, roughness: 0.3 }), stone = std(0x8d8a84, { roughness: 1 }), counterTop = std(0xd8d4c8, { roughness: 0.5 });
+const glowMats = [];
+const glow = (color, k) => { const g = std(0x222222, { emissive: color, emissiveIntensity: 0 }); g.userData.k = k; glowMats.push(g); return g; };
+const bx = (w, h, d, mat, x, y, z, parent = cabin) => m(new THREE.BoxGeometry(w, h, d), mat, x, y, z, parent);
+const cyl = (rt, rb, h, mat, x, y, z, parent = cabin, seg = 16) => m(new THREE.CylinderGeometry(rt, rb, h, seg), mat, x, y, z, parent);
+const legs4 = (w, d, h, mat, parent, t = 0.05) => { for (const sx of [-1, 1]) for (const sz of [-1, 1]) bx(t, h, t, mat, sx * (w / 2 - t), h / 2, sz * (d / 2 - t), parent); };
+const group = (x, y, z, ry = 0, parent = cabin) => { const g = new THREE.Group(); g.position.set(x, y, z); g.rotation.y = ry; parent.add(g); return g; };
+function fabricTex(colors, stripe) {
+  const c = document.createElement('canvas'); c.width = c.height = 128; const g = c.getContext('2d');
+  colors.forEach((col, i) => { g.fillStyle = col; g.fillRect(0, i * stripe, 128, stripe); });
+  for (let y = stripe * colors.length; y < 128; y += stripe * colors.length) g.drawImage(c, 0, 0, 128, stripe * colors.length, 0, y, 128, stripe * colors.length);
+  const t = new THREE.CanvasTexture(c); t.colorSpace = THREE.SRGBColorSpace; return t;
+}
+
+// plank floor
+{
+  const c = document.createElement('canvas'); c.width = 256; c.height = 512; const g = c.getContext('2d');
+  g.fillStyle = 'hsl(28, 45%, 55%)'; g.fillRect(0, 0, 256, 512);
+  for (let x = 0; x < 256; x += 32) for (let y = -Math.random() * 200; y < 512; y += 160 + Math.random() * 40) {
+    g.fillStyle = `hsl(28, 45%, ${52 + Math.random() * 10}%)`; g.fillRect(x, y, 31, 200);
+    g.fillStyle = 'rgba(60,30,10,.5)'; g.fillRect(x, y, 31, 2);
+  }
+  const t = new THREE.CanvasTexture(c); t.colorSpace = THREE.SRGBColorSpace; t.wrapS = t.wrapT = THREE.RepeatWrapping; t.repeat.set(2, 2);
+  floorMat.map = t; floorMat.color.set(0xffffff); floorMat.needsUpdate = true;
+}
+
+// living room: rug, sleeper sofa, armchair, coffee table, floor lamp
+const rug = new THREE.Mesh(new THREE.PlaneGeometry(2.2, 2.8), new THREE.MeshStandardMaterial({ map: fabricTex(['#b9653a', '#d9cbb2', '#1d2b3a', '#d9cbb2'], 8), roughness: 1 }));
+rug.rotation.x = -Math.PI / 2; rug.position.set(-0.8, Y0 + 0.005, 1.6); rug.receiveShadow = true; cabin.add(rug);
+function sofa(x, z, ry, seats, mat) {
+  const s = group(x, Y0, z, ry), len = seats * 0.72 + 0.36;
+  bx(0.86, 0.26, len, mat, 0, 0.27, 0, s);                                   // base
+  for (const sz of [-1, 1]) for (const sx of [-1, 1]) cyl(0.03, 0.025, 0.14, walnut, sx * 0.35, 0.07, sz * (len / 2 - 0.08), s, 8);
+  for (const sz of [-1, 1]) bx(0.86, 0.5, 0.18, mat, 0, 0.45, sz * (len / 2 - 0.09), s); // arms
+  bx(0.2, 0.55, len - 0.36, mat, -0.33, 0.62, 0, s);                         // back frame
+  for (let i = 0; i < seats; i++) {
+    const cz = -((seats - 1) * 0.72) / 2 + i * 0.72;
+    bx(0.62, 0.15, 0.68, mat, 0.08, 0.48, cz, s);                            // seat cushion
+    const back = bx(0.16, 0.42, 0.68, mat, -0.2, 0.75, cz, s); back.rotation.z = 0.12; // back cushion
+  }
+  return s;
+}
+const couch = sofa(-1.55, 1.5, 0, 3, rust);
+for (const [z, mat, r] of [[0.75, ochre, 0.4], [2.25, linen, -0.3]]) { const p = bx(0.12, 0.3, 0.3, mat, -0.18, 0.7, z - 1.5, couch); p.rotation.set(0.2, r, 0.15); }
+const throwBlanket = bx(0.5, 0.03, 0.6, moss, 0.05, 0.57, 0.55, couch); throwBlanket.rotation.z = -0.15;
+const armchair = sofa(0.75, 2.75, Math.PI - 0.6, 1, moss);
+{
+  const t = group(-0.45, Y0, 1.5);                                         // coffee table
+  bx(0.62, 0.06, 1.1, walnut, 0, 0.42, 0, t); bx(0.56, 0.03, 1.0, walnut, 0, 0.14, 0, t); legs4(0.6, 1.08, 0.42, walnut, t);
+  bx(0.22, 0.04, 0.3, std(0x1d2b3a), 0.1, 0.47, -0.25, t); bx(0.2, 0.035, 0.26, ochre, 0.1, 0.505, -0.24, t);  // books
+  cyl(0.045, 0.04, 0.09, linen, -0.12, 0.5, 0.2, t, 12);                    // mug
+  cyl(0.05, 0.05, 0.12, glow(0xffb347, 1.5), 0.1, 0.51, 0.3, t, 12);           // candle
+}
+{
+  const l = group(-1.6, Y0, 2.95);                                          // floor lamp
+  cyl(0.14, 0.16, 0.03, dark, 0, 0.015, 0, l); cyl(0.015, 0.015, 1.4, dark, 0, 0.72, 0, l, 8);
+  m(new THREE.CylinderGeometry(0.13, 0.22, 0.28, 20, 1, true), glow(0xffc77a, 2.2), 0, 1.5, 0, l).material.side = THREE.DoubleSide;
+}
+// plant by the front glass
+function plant(x, y, z, s = 1) {
+  const p = group(x, y, z); p.scale.setScalar(s);
+  cyl(0.16, 0.12, 0.3, std(0xb5652f), 0, 0.15, 0, p, 16);
+  const leaf = std(0x4d6b45, { flatShading: true });
+  for (let i = 0; i < 7; i++) { const a = i / 7 * Math.PI * 2; const b = m(new THREE.IcosahedronGeometry(0.16, 0), leaf, Math.cos(a) * 0.1, 0.42 + (i % 3) * 0.12, Math.sin(a) * 0.1, p); b.scale.y = 1.6; }
+}
+plant(-1.0, Y0, 3.45); plant(2.0, Y0, 3.2, 0.8);
+
+// wood stove on a stone hearth, door glows when lit
+const fireMat = glow(0xff7a2a, 3.5);
+{
+  const s = group(1.6, Y0, 0.8, Math.PI / 2 + 0.6);
+  bx(1.1, 0.06, 1.1, stone, 0, 0.03, 0, s);
+  bx(0.62, 0.52, 0.5, dark, 0, 0.42, 0, s); bx(0.68, 0.04, 0.56, dark, 0, 0.7, 0, s); legs4(0.56, 0.44, 0.16, dark, s, 0.06);
+  bx(0.36, 0.28, 0.02, fireMat, 0, 0.44, 0.26, s); bx(0.42, 0.34, 0.015, dark, 0, 0.44, 0.255, s);
+  cyl(0.015, 0.015, 0.12, steel, 0.24, 0.44, 0.29, s, 6).rotation.x = Math.PI / 2;
+}
+m(new THREE.CylinderGeometry(0.09, 0.09, 5.35, 12), dark, 1.6, 3.6, 0.8, cabin);
+{
+  const b = group(2.15, Y0, 1.75, 0.3);                                     // log basket
+  bx(0.5, 0.25, 0.35, std(0x7a5a3a), 0, 0.125, 0, b);
+  for (let i = 0; i < 3; i++) { const lg = cyl(0.06, 0.06, 0.55, std(0x8a6a4a), -0.12 + i * 0.12, 0.3, 0, b, 8); lg.rotation.z = Math.PI / 2; }
+}
+
+// kitchen run on the left wall: cabinets, counter, sink, range, fridge
+{
+  const k = group(-2.05, Y0, -2.1), cab = std(0x56633f, { roughness: 0.7 });
+  bx(0.6, 0.85, 2.4, cab, 0, 0.425, 0, k);
+  for (let z = -0.9; z <= 0.91; z += 0.6) { bx(0.02, 0.7, 0.54, std(0x4a5636), 0.305, 0.42, z, k); cyl(0.018, 0.018, 0.04, steel, 0.33, 0.68, z + 0.18, k, 8).rotation.z = Math.PI / 2; }
+  bx(0.66, 0.05, 2.46, counterTop, 0.02, 0.875, 0, k);
+  bx(0.38, 0.02, 0.48, dark, 0.05, 0.9, 0.5, k);                             // sink
+  cyl(0.015, 0.015, 0.3, steel, -0.18, 1.05, 0.5, k, 8); bx(0.18, 0.025, 0.025, steel, -0.1, 1.2, 0.5, k);
+  bx(0.5, 0.02, 0.56, dark, 0.04, 0.905, -0.55, k);                          // range top
+  for (const [dx, dz] of [[-0.1, -0.13], [-0.1, 0.13], [0.14, -0.13], [0.14, 0.13]]) m(new THREE.TorusGeometry(0.07, 0.012, 6, 16), steel, 0.04 + dx, 0.92, -0.55 + dz, k).rotation.x = Math.PI / 2;
+  bx(0.02, 0.5, 0.5, dark, 0.31, 0.45, -0.55, k);                            // oven door
+  cyl(0.06, 0.05, 0.12, std(0xb5652f), 0.1, 0.98, 0.0, k, 12);               // kettle
+  bx(0.25, 0.3, 0.08, oak, -0.15, 1.05, -0.95, k).rotation.y = 0.2;          // cutting board leaning
+}
+{
+  const f = group(-1.75, Y0, -3.55);                                         // fridge
+  bx(0.6, 1.75, 0.6, steel, 0, 0.875, 0, f); bx(0.61, 0.01, 0.61, dark, 0, 1.15, 0, f);
+  bx(0.03, 0.5, 0.03, dark, 0.32, 1.45, 0.22, f); bx(0.03, 0.4, 0.03, dark, 0.32, 0.8, 0.22, f);
+}
+
+// dining table under the loft, four chairs, pendant lamp
+function chair(x, z, ry) {
+  const c = group(x, Y0, z, ry);
+  bx(0.42, 0.04, 0.42, oak, 0, 0.45, 0, c); legs4(0.42, 0.42, 0.45, oak, c, 0.035);
+  for (const sx of [-0.18, 0.18]) bx(0.035, 0.5, 0.035, oak, sx, 0.7, -0.19, c);
+  bx(0.4, 0.12, 0.03, oak, 0, 0.88, -0.19, c); bx(0.4, 0.06, 0.03, oak, 0, 0.66, -0.19, c);
+}
+{
+  const t = group(0.45, Y0, -0.9);
+  bx(0.85, 0.05, 1.35, oak, 0, 0.76, 0, t); legs4(0.8, 1.3, 0.74, oak, t, 0.06);
+  cyl(0.11, 0.09, 0.05, linen, 0, 0.8, 0, t, 16); cyl(0.04, 0.04, 0.16, std(0xb5652f), 0, 0.88, 0, t, 10);
+  for (const sz of [-0.32, 0.32]) { chair(0.45 - 0.62, -0.9 + sz, Math.PI / 2); chair(0.45 + 0.62, -0.9 + sz, -Math.PI / 2); }
+  cyl(0.008, 0.008, 1.2, dark, 0.45, loftY - 0.7, -0.9, cabin, 6);
+  m(new THREE.CylinderGeometry(0.05, 0.22, 0.2, 20, 1, true), glow(0xffc77a, 2.5), 0.45, loftY - 1.38, -0.9, cabin).material.side = THREE.DoubleSide;
+}
+
+// bunk room behind a board wall at the back right
+const boardWall = new THREE.MeshStandardMaterial({ map: fabricTex(['#a8693e', '#97603a'], 6), roughness: 0.85 });
+boardWall.map.rotation = Math.PI / 2;
+bx(0.08, 2.85, 2.05, boardWall, 0.62, Y0 + 1.425, -2.85);
+bx(0.4, 2.85, 0.08, boardWall, 0.82, Y0 + 1.425, -1.82);
+{
+  const b = group(1.22, Y0, -2.85);
+  for (const sx of [-0.43, 0.43]) for (const sz of [-0.93, 0.93]) bx(0.06, 1.75, 0.06, walnut, sx, 0.875, sz, b);
+  for (const y of [0.32, 1.22]) {
+    bx(0.92, 0.06, 1.92, walnut, 0, y, 0, b); bx(0.82, 0.14, 1.84, linen, 0, y + 0.1, 0, b);
+    bx(0.84, 0.05, 1.2, y < 1 ? std(0x1d2b3a) : ochre, 0, y + 0.19, 0.3, b);
+    bx(0.5, 0.1, 0.28, linen, 0, y + 0.22, -0.72, b);
+  }
+  bx(0.9, 0.12, 0.04, walnut, 0, 1.5, 0.94, b); bx(0.04, 0.12, 1.2, walnut, -0.44, 1.5, -0.2, b);
+  for (let y = 0.5; y < 1.3; y += 0.25) bx(0.04, 0.04, 0.3, walnut, -0.45, y, 0.65, b);  // ladder rungs
+}
+
+// loft bedroom: platform bed, duvet, pillows, headboard, nightstands with lamps, rug, railing, ladder
+const loftRug = new THREE.Mesh(new THREE.PlaneGeometry(2.4, 2.6), new THREE.MeshStandardMaterial({ map: fabricTex(['#56633f', '#e8e2d4'], 10), roughness: 1 }));
+loftRug.rotation.x = -Math.PI / 2; loftRug.position.set(0, Y1 + 0.005, -2.2); cabin.add(loftRug);
+{
+  const b = group(0, Y1, -2.4);
+  bx(1.7, 0.2, 2.2, walnut, 0, 0.1, 0, b);
+  bx(1.6, 0.22, 2.05, linen, 0, 0.31, 0, b);
+  const duvet = bx(1.66, 0.08, 1.45, std(0xd9cfbb, { roughness: 1 }), 0, 0.45, 0.33, b); duvet.rotation.x = 0.02;
+  bx(1.68, 0.05, 0.45, moss, 0, 0.5, 0.75, b);                                 // throw at the foot
+  for (const sx of [-0.4, 0.4]) { const pw = bx(0.62, 0.14, 0.36, linen, sx, 0.5, -0.78, b); pw.rotation.x = -0.25; }
+  bx(0.4, 0.11, 0.3, rust, 0.1, 0.53, -0.5, b).rotation.set(-0.3, 0.2, 0);
+  bx(1.74, 0.62, 0.08, walnut, 0, 0.42, -1.12, b);                             // headboard
+  for (const sx of [-1.1, 1.1]) {
+    bx(0.38, 0.4, 0.34, walnut, sx, 0.2, -0.85, b);
+    cyl(0.05, 0.06, 0.12, linen, sx, 0.46, -0.85, b, 12);
+    m(new THREE.CylinderGeometry(0.07, 0.11, 0.13, 16, 1, true), glow(0xffc77a, 2), sx, 0.6, -0.85, b).material.side = THREE.DoubleSide;
+  }
+}
+for (let x = -1.0; x <= 0.61; x += 0.4) bx(0.05, 0.85, 0.05, walnut, x, Y1 + 0.425, 0.36);
+bx(1.7, 0.06, 0.07, walnut, -0.2, Y1 + 0.86, 0.36);
+bx(1.7, 0.04, 0.05, walnut, -0.2, Y1 + 0.4, 0.36);
+{
+  // ship ladder from the main floor up to the loft opening
+  const top = new THREE.Vector3(0.95, Y1 + 0.05, 0.42), foot = new THREE.Vector3(0.95, Y0, 1.35);
+  const len = top.distanceTo(foot), lean = Math.atan2(foot.z - top.z, top.y - foot.y);
+  const lad = group(0.95, (top.y + foot.y) / 2, (top.z + foot.z) / 2); lad.rotation.x = -lean;
+  for (const sx of [-0.22, 0.22]) bx(0.05, len, 0.09, oak, sx, 0, 0, lad);
+  for (let y = -len / 2 + 0.3; y < len / 2 - 0.1; y += 0.3) bx(0.44, 0.04, 0.14, oak, 0, y, 0, lad);
+}
+plant(-0.9, Y1, -0.3, 0.7);
 const moonDisc = new THREE.Mesh(new THREE.CircleGeometry(4, 48), new THREE.MeshBasicMaterial({ color: 0xf4efe0, transparent: true, opacity: 0, fog: false }));
 moonDisc.position.set(-30, 52, -150); scene.add(moonDisc);
 const stoveGlow = new THREE.PointLight(0xff9a3c, 0, 9, 1.6); stoveGlow.position.set(1.4, 1.2, 1.2); cabin.add(stoveGlow);
@@ -357,6 +524,33 @@ for (let i = 0; i <= 16; i++) {
   const g = new THREE.BufferGeometry(); g.setAttribute('position', new THREE.Float32BufferAttribute(verts, 3)); g.setIndex(idx); g.computeVertexNormals();
   const roadMesh = new THREE.Mesh(g, new THREE.MeshStandardMaterial({ color: 0xa89c84, roughness: 1, side: THREE.DoubleSide }));
   roadMesh.receiveShadow = true; scene.add(roadMesh);
+}
+
+// fire pit with stump seats, west of the deck
+const PIT = new THREE.Vector3(-6.8, 0, 8.6); PIT.y = groundH(PIT.x, PIT.z);
+for (let i = 0; i < 11; i++) {
+  const a = i / 11 * Math.PI * 2, r = m(new THREE.DodecahedronGeometry(0.22, 0), stone, PIT.x + Math.cos(a) * 0.72, PIT.y + 0.12, PIT.z + Math.sin(a) * 0.72, scene);
+  r.rotation.set(i, i * 2, 0); r.scale.y = 0.8;
+}
+for (let i = 0; i < 3; i++) { const lg = cyl(0.07, 0.07, 0.8, std(0x5a3d26), PIT.x, PIT.y + 0.12 + i * 0.05, PIT.z, scene, 8); lg.geometry.rotateZ(Math.PI / 2); lg.rotation.y = i * 1.05; }
+const pitFlame = new THREE.Mesh(new THREE.ConeGeometry(0.28, 0.7, 10), glow(0xff8a2a, 3));
+pitFlame.position.set(PIT.x, PIT.y + 0.45, PIT.z); scene.add(pitFlame);
+const pitLight = new THREE.PointLight(0xff8a3c, 0, 9, 1.6); pitLight.position.set(PIT.x, PIT.y + 0.9, PIT.z); scene.add(pitLight);
+for (let i = 0; i < 3; i++) { const a = 0.6 + i * 1.6; cyl(0.24, 0.26, 0.42, std(0x7a5a3a), PIT.x + Math.cos(a) * 1.7, groundH(PIT.x + Math.cos(a) * 1.7, PIT.z + Math.sin(a) * 1.7) + 0.21, PIT.z + Math.sin(a) * 1.7, scene, 12); }
+
+// parked SUV at the end of the gravel road
+{
+  const at = new THREE.Vector3(-8.6, 0, 17.2), car = group(at.x, groundH(at.x, at.z), at.z, 2.42, scene);
+  const paint = std(0x3c556b, { metalness: 0.4, roughness: 0.4 }), glass = std(0x1d2b3a, { roughness: 0.15, metalness: 0.5 });
+  bx(1.85, 0.62, 4.3, paint, 0, 0.66, 0, car);
+  bx(1.7, 0.58, 2.5, paint, 0, 1.25, -0.25, car);
+  for (const sx of [-0.86, 0.86]) bx(0.02, 0.42, 2.3, glass, sx, 1.27, -0.25, car);
+  bx(1.56, 0.44, 0.02, glass, 0, 1.27, 1.0, car).rotation.x = -0.35;
+  bx(1.56, 0.42, 0.02, glass, 0, 1.27, -1.5, car);
+  bx(1.6, 0.06, 2.0, dark, 0, 1.57, -0.3, car);                                // roof rack
+  for (const sx of [-0.92, 0.92]) for (const sz of [-1.35, 1.35]) { const w = cyl(0.36, 0.36, 0.26, dark, sx, 0.36, sz, car, 18); w.rotation.z = Math.PI / 2; }
+  for (const sx of [-0.62, 0.62]) bx(0.32, 0.12, 0.03, glow(0xfff4d6, 1.6), sx, 0.78, 2.16, car);
+  for (const sx of [-0.7, 0.7]) bx(0.24, 0.12, 0.03, glow(0xff3b2a, 1.2), sx, 0.82, -2.16, car);
 }
 
 // chimney smoke (night only)
@@ -432,6 +626,7 @@ function resize() {
 addEventListener('resize', resize);
 resize(); readScroll();
 const qp = new URLSearchParams(location.search).get('p');
+const camOverride = new URLSearchParams(location.search).get('cam')?.split(',').map(Number); // ?cam=x,y,z,tx,ty,tz for close-up checks
 if (qp !== null) { removeEventListener('scroll', readScroll); target = p = +qp * 3; } // ?p=0..1 freezes a scroll point for screenshots
 
 const anchors = {
@@ -439,6 +634,8 @@ const anchors = {
   stove: new THREE.Vector3(1.6, 1.2, 0.8),
   kitchen: new THREE.Vector3(-2.0, 1.2, -2.2),
   tub: new THREE.Vector3(2.4, 1.0, D / 2 + 2.4),
+  sofa: new THREE.Vector3(-1.55, 1.1, 1.5),
+  bunks: new THREE.Vector3(1.22, 2.1, -2.85),
 };
 const labels = [...document.querySelectorAll('.label')];
 const tv = new THREE.Vector3();
@@ -468,6 +665,9 @@ renderer.setAnimationLoop(() => {
   glassMat.emissiveIntensity = 0.15 + night * 1.1;
   waterMat.emissiveIntensity = night * 0.9;
   bulbMat.emissiveIntensity = night * 3;
+  const flicker = 0.85 + Math.sin(clock.elapsedTime * 9) * 0.08 + Math.sin(clock.elapsedTime * 23) * 0.07;
+  for (const g of glowMats) g.emissiveIntensity = night * g.userData.k * (g === fireMat || g === pitFlame.material ? flicker : 1);
+  pitLight.intensity = night * 10 * flicker; pitFlame.scale.y = 0.8 + flicker * 0.4;
   moon.intensity = night * 0.9;
   spill.intensity = night * 60;
   bloom.strength = 0.1 + night * 0.85;
@@ -493,6 +693,7 @@ renderer.setAnimationLoop(() => {
   camera.position.x += mouse.x * 2.5; camera.position.y -= mouse.y * 1.2;
   look.fromArray(keys[i].look).lerp(vb.fromArray(keys[i + 1].look), f);
   camera.lookAt(look);
+  if (camOverride) { camera.position.set(camOverride[0], camOverride[1], camOverride[2]); camera.lookAt(camOverride[3], camOverride[4], camOverride[5]); }
   composer.render();
 
   intro.style.opacity = 1 - seg(p, 0.15, 0.55);
