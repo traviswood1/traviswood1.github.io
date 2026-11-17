@@ -1,0 +1,408 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Halden H1 Turntable</title>
+<meta name="description" content="3D scroll-driven product homepage demo for a fictional turntable maker.">
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Darker+Grotesque:wght@500;700;900&family=Libre+Franklin:wght@400;500;600&display=swap" rel="stylesheet">
+<style>
+  :root {
+    --aluminum: #dfe2e3;
+    --graphite: #23272a;
+    --walnut: #6b4329;
+    --felt: #3c5a47;
+    --needle: #c0262d;
+    --muted: #5d6468;
+  }
+  * { box-sizing: border-box; }
+  html, body { margin: 0; }
+  body {
+    background: var(--aluminum);
+    color: var(--graphite);
+    font: 400 1.0625rem/1.6 "Libre Franklin", system-ui, sans-serif;
+  }
+  a { color: inherit; }
+  :focus-visible { outline: 3px solid var(--needle); outline-offset: 3px; }
+
+  .top {
+    position: absolute; inset: 0 0 auto 0; z-index: 5;
+    display: flex; align-items: center; justify-content: space-between;
+    padding: 20px clamp(16px, 4vw, 48px);
+  }
+  .wordmark { font: 900 2rem/1 "Darker Grotesque", sans-serif; letter-spacing: -0.02em; text-decoration: none; }
+  .top nav { display: flex; gap: 28px; align-items: center; }
+  .top nav a { text-decoration: none; font-weight: 500; }
+  .top nav a:hover { text-decoration: underline; text-underline-offset: 4px; }
+  .btn {
+    display: inline-block; padding: 12px 22px; border-radius: 999px;
+    background: var(--graphite); color: var(--aluminum); text-decoration: none; font-weight: 600;
+  }
+  .btn:hover { background: var(--felt); }
+
+  /* scroll stage */
+  .stage { position: relative; height: 420vh; }
+  .sticky { position: sticky; top: 0; height: 100vh; overflow: hidden; }
+  canvas { display: block; width: 100%; height: 100%; }
+  .panels { position: absolute; inset: 0; pointer-events: none; }
+  .panel {
+    position: absolute; left: clamp(16px, 6vw, 96px); top: 50%; transform: translateY(-50%);
+    max-width: 30rem; opacity: 0; transition: opacity .45s ease;
+    text-shadow: 0 0 10px var(--aluminum), 0 0 22px var(--aluminum);
+  }
+  .panel.on { opacity: 1; }
+  .panel h1, .panel h2 {
+    font-family: "Darker Grotesque", sans-serif; font-weight: 900;
+    line-height: .88; letter-spacing: -0.025em; margin: 0 0 18px;
+  }
+  .panel h1 { font-size: clamp(3.4rem, 8vw, 7rem); }
+  .panel h2 { font-size: clamp(2.6rem, 5.5vw, 4.6rem); }
+  .panel p { margin: 0; max-width: 26rem; color: var(--muted); font-size: 1.125rem; }
+  .scroll-hint { position: absolute; left: clamp(16px, 6vw, 96px); bottom: 28px; color: var(--muted); font-size: .95rem; }
+
+  .part-label {
+    position: absolute; left: 0; top: 0; pointer-events: none; opacity: 0;
+    font: 700 1.35rem/1 "Darker Grotesque", sans-serif; white-space: nowrap;
+    padding-left: 18px;
+  }
+  .part-label::before {
+    content: ""; position: absolute; left: 0; top: 50%; width: 10px; height: 2px; background: var(--needle);
+  }
+  .part-label small { display: block; font: 400 .8rem/1.3 "Libre Franklin", sans-serif; color: var(--muted); }
+
+  .progress { position: absolute; right: clamp(16px, 3vw, 40px); top: 50%; transform: translateY(-50%); display: grid; gap: 10px; }
+  .progress span { width: 8px; height: 8px; border-radius: 50%; border: 2px solid var(--graphite); }
+  .progress span.on { background: var(--graphite); }
+
+  /* after the stage */
+  .specs {
+    display: grid; grid-template-columns: 1fr 1.3fr; gap: clamp(32px, 6vw, 96px);
+    padding: clamp(64px, 10vw, 140px) clamp(16px, 6vw, 96px);
+    background: var(--graphite); color: var(--aluminum);
+  }
+  .specs h2 { font: 900 clamp(2.6rem, 5vw, 4.2rem)/.9 "Darker Grotesque", sans-serif; margin: 0 0 20px; letter-spacing: -0.02em; }
+  .specs .price { font: 700 2.4rem/1 "Darker Grotesque", sans-serif; margin: 28px 0 24px; }
+  .specs .btn { background: var(--aluminum); color: var(--graphite); }
+  .specs .btn:hover { background: #fff; }
+  dl { margin: 0; display: grid; grid-template-columns: max-content 1fr; }
+  dt, dd { padding: 16px 0; border-top: 1px solid #3a4044; margin: 0; }
+  dt { padding-right: 32px; color: #9aa2a6; }
+  footer { padding: 28px clamp(16px, 6vw, 96px); font-size: .9rem; color: var(--muted); }
+
+  .nogl { position: absolute; inset: 0; display: none; place-items: center; padding: 24px; text-align: center; }
+
+  @media (max-width: 760px) {
+    .top nav a:not(.btn) { display: none; }
+    .panel { top: auto; bottom: 56px; transform: none; right: 16px; }
+    .panel p { font-size: 1rem; }
+    .progress { display: none; }
+    .specs { grid-template-columns: 1fr; }
+    .part-label { font-size: 1.05rem; }
+    .part-label small { display: none; }
+  }
+  @media (prefers-reduced-motion: reduce) { .panel { transition: none; } }
+</style>
+</head>
+<body>
+<header class="top">
+  <a class="wordmark" href="#">Halden</a>
+  <nav>
+    <a href="#specs">Specs</a>
+    <a href="#specs">Service</a>
+    <a class="btn" href="#specs">Find a dealer</a>
+  </nav>
+</header>
+
+<main>
+  <section class="stage" id="stage">
+    <div class="sticky">
+      <canvas id="gl" aria-label="3D model of the Halden H1 turntable that changes as you scroll"></canvas>
+      <div class="nogl" id="nogl"><p>This page shows a 3D model, and your browser has WebGL turned off.</p></div>
+      <div class="panels">
+        <div class="panel on" data-i="0">
+          <h1>You can hear the wood in it.</h1>
+          <p>The Halden H1: a belt-drive turntable on a solid walnut plinth, built by hand in Decorah, Iowa.</p>
+        </div>
+        <div class="panel" data-i="1">
+          <h2>Lift the lid.</h2>
+          <p>The motor sits on its own rubber mount, so its hum stays out of the platter and out of your records.</p>
+        </div>
+        <div class="panel" data-i="2">
+          <h2>Drop the needle.</h2>
+          <p>The carbon tonearm comes set up from the factory with the cartridge fitted. Plug it in and play.</p>
+        </div>
+        <div class="panel" data-i="3">
+          <h2>Comes apart for service.</h2>
+          <p>No glue, no sealed parts. Every piece lifts off, so a local shop can fix it twenty years from now.</p>
+        </div>
+      </div>
+      <div class="part-label" data-part="record">Record<small>12 in, 180 g</small></div>
+      <div class="part-label" data-part="mat">Felt mat<small>Wool, 3 mm</small></div>
+      <div class="part-label" data-part="platter">Platter<small>Machined aluminum, 1.6 kg</small></div>
+      <div class="part-label" data-part="plinth">Plinth<small>Solid walnut, 38 mm</small></div>
+      <div class="progress" aria-hidden="true"><span class="on"></span><span></span><span></span><span></span></div>
+      <p class="scroll-hint" id="hint">Scroll to open it up</p>
+    </div>
+  </section>
+
+  <section class="specs" id="specs">
+    <div>
+      <h2>Halden H1</h2>
+      <p>One model, made in small batches. Each one ships with a printed setup card signed by the person who built it.</p>
+      <p class="price">$1,450</p>
+      <a class="btn" href="#">Find a dealer</a>
+    </div>
+    <dl>
+      <dt>Drive</dt><dd>Belt, 33⅓ and 45 rpm</dd>
+      <dt>Plinth</dt><dd>Solid walnut, oil finish</dd>
+      <dt>Platter</dt><dd>Machined aluminum with wool mat</dd>
+      <dt>Tonearm</dt><dd>9 in carbon fiber, factory set</dd>
+      <dt>Cartridge</dt><dd>Moving magnet, fitted</dd>
+      <dt>Weight</dt><dd>8.4 kg</dd>
+    </dl>
+  </section>
+</main>
+<footer>Concept homepage by ITwood. Halden Audio is a made-up brand for this demo.</footer>
+
+<script type="importmap">
+{ "imports": {
+  "three": "https://cdn.jsdelivr.net/npm/three@0.170.0/build/three.module.js",
+  "three/addons/": "https://cdn.jsdelivr.net/npm/three@0.170.0/examples/jsm/"
+} }
+</script>
+<script type="module">
+import * as THREE from 'three';
+import { RoomEnvironment } from 'three/addons/environments/RoomEnvironment.js';
+
+const canvas = document.getElementById('gl');
+let renderer;
+try {
+  renderer = new THREE.WebGLRenderer({ canvas, antialias: true, alpha: true });
+} catch (e) {
+  document.getElementById('nogl').style.display = 'grid';
+  throw e;
+}
+renderer.setPixelRatio(Math.min(devicePixelRatio, 2));
+renderer.shadowMap.enabled = true;
+renderer.shadowMap.type = THREE.PCFSoftShadowMap;
+renderer.toneMapping = THREE.ACESFilmicToneMapping;
+
+const scene = new THREE.Scene();
+const pmrem = new THREE.PMREMGenerator(renderer);
+scene.environment = pmrem.fromScene(new RoomEnvironment(), 0.04).texture;
+
+const camera = new THREE.PerspectiveCamera(32, 1, 0.1, 100);
+
+// lights
+const sun = new THREE.DirectionalLight(0xffffff, 2.2);
+sun.position.set(4, 9, 5);
+sun.castShadow = true;
+sun.shadow.mapSize.set(2048, 2048);
+Object.assign(sun.shadow.camera, { left: -5, right: 5, top: 5, bottom: -5 });
+sun.shadow.radius = 6;
+scene.add(sun, new THREE.HemisphereLight(0xffffff, 0x9aa0a2, 0.6));
+
+const ground = new THREE.Mesh(new THREE.PlaneGeometry(30, 30), new THREE.ShadowMaterial({ opacity: 0.16 }));
+ground.rotation.x = -Math.PI / 2;
+ground.receiveShadow = true;
+scene.add(ground);
+
+// textures drawn on canvas
+function woodTexture() {
+  const c = document.createElement('canvas'); c.width = c.height = 1024;
+  const g = c.getContext('2d');
+  g.fillStyle = '#6b4329'; g.fillRect(0, 0, 1024, 1024);
+  for (let i = 0; i < 260; i++) {
+    const y = Math.random() * 1024, amp = 4 + Math.random() * 14, f = 0.002 + Math.random() * 0.006;
+    g.strokeStyle = Math.random() < 0.5 ? `rgba(40,20,8,${0.08 + Math.random() * 0.2})` : `rgba(160,104,64,${0.05 + Math.random() * 0.12})`;
+    g.lineWidth = 0.6 + Math.random() * 2.4;
+    g.beginPath();
+    for (let x = 0; x <= 1024; x += 8) g.lineTo(x, y + Math.sin(x * f + i) * amp);
+    g.stroke();
+  }
+  const t = new THREE.CanvasTexture(c); t.colorSpace = THREE.SRGBColorSpace; t.anisotropy = 8;
+  return t;
+}
+function recordTexture() {
+  const c = document.createElement('canvas'); c.width = c.height = 1024;
+  const g = c.getContext('2d');
+  g.fillStyle = '#121314'; g.fillRect(0, 0, 1024, 1024);
+  for (let r = 180; r < 512; r += 1.6) {
+    g.strokeStyle = `rgba(255,255,255,${0.015 + Math.random() * 0.04})`;
+    g.beginPath(); g.arc(512, 512, r, 0, Math.PI * 2); g.stroke();
+  }
+  g.fillStyle = '#c0262d'; g.beginPath(); g.arc(512, 512, 165, 0, Math.PI * 2); g.fill();
+  g.fillStyle = '#dfe2e3'; g.font = '900 56px "Darker Grotesque", sans-serif'; g.textAlign = 'center';
+  g.fillText('HALDEN', 512, 470); g.font = '500 28px "Libre Franklin", sans-serif'; g.fillText('Side A, 33⅓ rpm', 512, 590);
+  g.fillStyle = '#ddd'; g.beginPath(); g.arc(512, 512, 10, 0, Math.PI * 2); g.fill();
+  const t = new THREE.CanvasTexture(c); t.colorSpace = THREE.SRGBColorSpace; t.anisotropy = 8;
+  return t;
+}
+
+const mat = {
+  wood: new THREE.MeshStandardMaterial({ map: woodTexture(), roughness: 0.55 }),
+  alu: new THREE.MeshStandardMaterial({ color: 0xc9ccce, metalness: 0.95, roughness: 0.28 }),
+  darkAlu: new THREE.MeshStandardMaterial({ color: 0x3a3f42, metalness: 0.8, roughness: 0.35 }),
+  felt: new THREE.MeshStandardMaterial({ color: 0x3c5a47, roughness: 1 }),
+  vinylSide: new THREE.MeshStandardMaterial({ color: 0x111111, roughness: 0.4 }),
+  carbon: new THREE.MeshStandardMaterial({ color: 0x1d1f21, metalness: 0.4, roughness: 0.3 }),
+};
+const vinylTop = new THREE.MeshStandardMaterial({ map: recordTexture(), roughness: 0.32, metalness: 0.1 });
+document.fonts.ready.then(() => { vinylTop.map = recordTexture(); vinylTop.needsUpdate = true; });
+
+function mesh(geo, m, x = 0, y = 0, z = 0) {
+  const o = new THREE.Mesh(geo, m); o.position.set(x, y, z); o.castShadow = o.receiveShadow = true; return o;
+}
+
+const deck = new THREE.Group(); scene.add(deck);
+const TOP = 0.6;
+
+// plinth + feet + controls
+const plinth = new THREE.Group(); deck.add(plinth);
+plinth.add(mesh(new THREE.BoxGeometry(4, 0.5, 3.2), mat.wood, 0, 0.35, 0));
+for (const [x, z] of [[-1.7, -1.3], [1.7, -1.3], [-1.7, 1.3], [1.7, 1.3]])
+  plinth.add(mesh(new THREE.CylinderGeometry(0.18, 0.2, 0.1, 32), mat.darkAlu, x, 0.05, z));
+for (const [i, x] of [[0, 1.25], [1, 1.6]]) {
+  const b = mesh(new THREE.CylinderGeometry(0.1, 0.1, 0.05, 32), i ? mat.alu : mat.darkAlu, x, TOP + 0.025, 1.25);
+  plinth.add(b);
+}
+const pivotBase = mesh(new THREE.CylinderGeometry(0.22, 0.25, 0.08, 40), mat.alu, 1.45, TOP + 0.04, -1.0);
+plinth.add(pivotBase);
+
+// platter, mat, record (separate groups so they can lift apart)
+const PX = -0.4;
+const platter = new THREE.Group(); platter.position.set(PX, 0, 0); deck.add(platter);
+platter.add(mesh(new THREE.CylinderGeometry(1.3, 1.3, 0.12, 96), mat.alu, 0, TOP + 0.06, 0));
+platter.add(mesh(new THREE.CylinderGeometry(0.02, 0.02, 0.12, 12), mat.alu, 0, TOP + 0.17, 0));
+const feltMat = new THREE.Group(); feltMat.position.set(PX, 0, 0); deck.add(feltMat);
+feltMat.add(mesh(new THREE.CylinderGeometry(1.25, 1.25, 0.02, 96), mat.felt, 0, TOP + 0.13, 0));
+const record = new THREE.Group(); record.position.set(PX, 0, 0); deck.add(record);
+record.add(mesh(new THREE.CylinderGeometry(1.2, 1.2, 0.015, 128), [mat.vinylSide, vinylTop, mat.vinylSide], 0, TOP + 0.148, 0));
+
+// tonearm
+const arm = new THREE.Group(); arm.position.set(1.45, 0, -1.0); deck.add(arm);
+arm.add(mesh(new THREE.CylinderGeometry(0.07, 0.07, 0.32, 24), mat.alu, 0, TOP + 0.2, 0));
+const tube = mesh(new THREE.CylinderGeometry(0.028, 0.028, 2.05, 16), mat.carbon, 0, TOP + 0.32, 1.02);
+tube.rotation.x = Math.PI / 2; arm.add(tube);
+const counter = mesh(new THREE.CylinderGeometry(0.1, 0.1, 0.22, 32), mat.darkAlu, 0, TOP + 0.32, -0.25);
+counter.rotation.x = Math.PI / 2; arm.add(counter);
+const shell = mesh(new THREE.BoxGeometry(0.16, 0.05, 0.3), mat.darkAlu, -0.03, TOP + 0.27, 2.08);
+shell.rotation.y = 0.35; arm.add(shell);
+
+// lid on a hinge at the back edge
+const hinge = new THREE.Group(); hinge.position.set(0, TOP, -1.62); deck.add(hinge);
+const lidGeo = new THREE.BoxGeometry(4.04, 0.9, 3.24);
+const lidMat = new THREE.MeshPhysicalMaterial({ color: 0xffffff, transparent: true, opacity: 0.14, roughness: 0.05, depthWrite: false });
+const lid = new THREE.Mesh(lidGeo, lidMat); lid.position.set(0, 0.45, 1.62); hinge.add(lid);
+const lidEdges = new THREE.LineSegments(new THREE.EdgesGeometry(lidGeo), new THREE.LineBasicMaterial({ color: 0x23272a, transparent: true, opacity: 0.35 }));
+lid.add(lidEdges);
+
+// scroll -> progress (0..3)
+const clamp = (v, a, b) => Math.min(b, Math.max(a, v));
+const ease = t => t * t * (3 - 2 * t);
+const seg = (p, a, b) => ease(clamp((p - a) / (b - a), 0, 1));
+const reduce = matchMedia('(prefers-reduced-motion: reduce)').matches;
+const stage = document.getElementById('stage');
+let target = 0, p = 0;
+function readScroll() {
+  const r = stage.getBoundingClientRect();
+  target = clamp(-r.top / Math.max(1, r.height - innerHeight), 0, 1) * 3 || 0;
+}
+addEventListener('scroll', readScroll, { passive: true });
+
+const keys = [
+  { pos: [7.0, 5.4, 8.4], look: [0, 0.4, 0] },
+  { pos: [4.8, 5.0, 6.2], look: [0, 0.6, -0.2] },
+  { pos: [5.0, 3.9, 4.4], look: [-0.2, 0.7, -0.1] },
+  { pos: [7.8, 4.3, 7.0], look: [0, 1.6, 0] },
+];
+const v1 = new THREE.Vector3(), v2 = new THREE.Vector3(), look = new THREE.Vector3();
+function cameraAt(p) {
+  const i = Math.min(Math.floor(p), 2), t = ease(clamp(p - i, 0, 1));
+  const a = keys[i], b = keys[i + 1];
+  camera.position.copy(v1.fromArray(a.pos).lerp(v2.fromArray(b.pos), t));
+  look.fromArray(a.look).lerp(v2.fromArray(b.look), t);
+  camera.lookAt(look);
+}
+
+// panels, dots, labels
+const panels = [...document.querySelectorAll('.panel')];
+const dots = [...document.querySelectorAll('.progress span')];
+const hint = document.getElementById('hint');
+let shown = 0;
+const labels = {
+  record: [record, 0.16], mat: [feltMat, 0.14], platter: [platter, 0.08], plinth: [plinth, 0.35],
+};
+const labelEls = [...document.querySelectorAll('.part-label')];
+
+function resize() {
+  const w = innerWidth, h = innerHeight;
+  renderer.setSize(w, h, false);
+  camera.aspect = w / h;
+  if (w > 760) camera.setViewOffset(w, h, -w * 0.21, 0, w, h);
+  else camera.setViewOffset(w, h, 0, h * 0.16, w, h);
+  camera.fov = w > 760 ? 32 : 44;
+  camera.updateProjectionMatrix();
+}
+addEventListener('resize', resize);
+resize(); readScroll();
+
+const clock = new THREE.Clock();
+let spin = 0, spinSpeed = 0;
+const tmp = new THREE.Vector3();
+
+renderer.setAnimationLoop(() => {
+  const dt = Math.min(clock.getDelta(), 0.05);
+  p = reduce ? target : p + (target - p) * Math.min(1, dt * 6);
+
+  // lid opens 0.2..1, lifts away while exploding
+  const open = seg(p, 0.2, 1.0);
+  const ex = seg(p, 2.25, 3.0);
+  hinge.rotation.x = -1.15 * open;
+  hinge.position.y = TOP + ex * 3.2;
+  lidMat.opacity = 0.14 * (1 - ex);
+  lidEdges.material.opacity = 0.35 * (1 - ex);
+
+  // tonearm swings onto the record 1.2..2
+  const play = seg(p, 1.2, 2.0);
+  arm.rotation.y = -0.58 * play;
+  arm.position.y = Math.sin(play * Math.PI) * 0.12 + ex * 0.55;
+
+  // platter spins once the arm is down
+  const want = p > 1.85 && !reduce ? 3.49 : 0; // 33 rpm
+  spinSpeed += (want - spinSpeed) * Math.min(1, dt * 2);
+  spin += spinSpeed * dt;
+  platter.rotation.y = feltMat.rotation.y = record.rotation.y = spin;
+
+  platter.position.y = ex * 0.75;
+  feltMat.position.y = ex * 1.45;
+  record.position.y = ex * 2.15;
+
+  cameraAt(p);
+  renderer.render(scene, camera);
+
+  // text panels follow the nearest step
+  const step = clamp(Math.round(p), 0, 3);
+  if (step !== shown) {
+    panels[shown].classList.remove('on'); panels[step].classList.add('on');
+    dots[shown].classList.remove('on'); dots[step].classList.add('on');
+    shown = step;
+  }
+  hint.style.opacity = 1 - seg(p, 0, 0.3);
+
+  // part labels sit at the left edge of each part
+  const w = innerWidth, h = innerHeight;
+  for (const el of labelEls) {
+    const [obj, yOff] = labels[el.dataset.part];
+    tmp.set(PX + (el.dataset.part === 'plinth' ? 0 : 1.35), obj.position.y + TOP + yOff, el.dataset.part === 'plinth' ? 1.65 : 0.4);
+    if (el.dataset.part === 'plinth') tmp.set(2.05, TOP - 0.1, 1.0);
+    tmp.project(camera);
+    el.style.transform = `translate(${(tmp.x + 1) / 2 * w + 12}px, ${(1 - tmp.y) / 2 * h - 10}px)`;
+    el.style.opacity = seg(p, 2.6, 3.0);
+  }
+});
+</script>
+</body>
+</html>

@@ -1,0 +1,410 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Tamarack Hollow Cabin</title>
+<meta name="description" content="3D scroll-driven homepage demo for a fictional cabin rental: day turns to night, then the roof opens.">
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Young+Serif&family=Mulish:wght@400;600;800&display=swap" rel="stylesheet">
+<style>
+  :root {
+    --birch: #eef0ea;
+    --dusk: #1d2b3a;
+    --cedar: #9a5b34;
+    --lamp: #ffb347;
+    --moss: #56633f;
+    --ink-soft: #4a5560;
+  }
+  * { box-sizing: border-box; }
+  html, body { margin: 0; }
+  body { background: var(--dusk); color: var(--dusk); font: 400 1.0625rem/1.65 "Mulish", system-ui, sans-serif; }
+  a { color: inherit; }
+  :focus-visible { outline: 3px solid var(--lamp); outline-offset: 3px; }
+
+  .top {
+    position: absolute; inset: 0 0 auto 0; z-index: 5; color: var(--birch);
+    display: flex; justify-content: space-between; align-items: baseline;
+    padding: 22px clamp(16px, 4vw, 52px);
+  }
+  .brand { font: 400 1.5rem/1 "Young Serif", serif; text-decoration: none; }
+  .top a.book { font-weight: 800; text-decoration: underline; text-underline-offset: 5px; text-decoration-thickness: 2px; }
+
+  .stage { position: relative; }
+  .sticky { position: sticky; top: 0; height: 100vh; overflow: hidden; }
+  canvas { display: block; width: 100%; height: 100%; }
+
+  .intro {
+    position: absolute; left: 0; right: 0; top: 17vh; text-align: center; color: var(--birch);
+    padding: 0 16px; pointer-events: none;
+  }
+  .intro h1 {
+    font: 400 clamp(2.8rem, 7.4vw, 6.6rem)/.98 "Young Serif", serif; margin: 0 auto; max-width: 13ch;
+    text-shadow: 0 2px 30px rgba(29, 43, 58, .35);
+  }
+  .intro p { margin: 18px auto 0; max-width: 34rem; font-weight: 600; text-shadow: 0 1px 12px rgba(29, 43, 58, .5); }
+
+  .steps { position: relative; margin-top: -100vh; pointer-events: none; }
+  .step { height: 100vh; display: flex; align-items: flex-end; padding: 0 clamp(16px, 5vw, 72px) 9vh; }
+  .step:first-child { height: 120vh; }
+  .note {
+    pointer-events: auto; max-width: 25rem; background: var(--birch); padding: 26px 28px 28px;
+    border-left: 6px solid var(--cedar);
+  }
+  .note h2 { font: 400 clamp(1.7rem, 3vw, 2.3rem)/1.1 "Young Serif", serif; margin: 0 0 10px; }
+  .note p { margin: 0; color: var(--ink-soft); }
+
+  .label {
+    position: absolute; left: 0; top: 0; pointer-events: none; opacity: 0;
+    background: var(--dusk); color: var(--birch); padding: 6px 12px; font-weight: 800; font-size: .9rem;
+    border-radius: 3px; white-space: nowrap; transform-origin: 0 100%;
+  }
+  .label::after { content: ""; position: absolute; left: 10px; bottom: -6px; border: 6px solid transparent; border-bottom: 0; border-top-color: var(--dusk); }
+
+  .booking { background: var(--birch); padding: clamp(64px, 10vw, 130px) clamp(16px, 6vw, 96px); }
+  .booking-inner { display: grid; grid-template-columns: 1.1fr 1fr; gap: clamp(32px, 6vw, 96px); max-width: 1100px; margin: 0 auto; }
+  .booking h2 { font: 400 clamp(2.2rem, 4.4vw, 3.6rem)/1.02 "Young Serif", serif; margin: 0 0 16px; }
+  .rate { font-size: 1.25rem; margin: 24px 0 0; }
+  .rate strong { font: 400 2.2rem/1 "Young Serif", serif; color: var(--cedar); margin-right: 6px; }
+  form { display: grid; grid-template-columns: 1fr 1fr; gap: 16px; align-content: start; }
+  label { display: grid; gap: 6px; font-weight: 800; font-size: .95rem; }
+  input, select {
+    font: inherit; padding: 12px 14px; border: 2px solid var(--dusk); border-radius: 4px; background: #fff; color: var(--dusk);
+  }
+  label.wide, button { grid-column: 1 / -1; }
+  button {
+    font: 800 1.05rem/1 "Mulish", sans-serif; padding: 16px; border: 0; border-radius: 4px; cursor: pointer;
+    background: var(--cedar); color: #fff;
+  }
+  button:hover { background: #7f4a29; }
+  .form-msg { grid-column: 1 / -1; margin: 0; min-height: 1.6em; font-weight: 600; }
+  footer { background: var(--birch); color: var(--ink-soft); padding: 0 clamp(16px, 6vw, 96px) 32px; font-size: .9rem; }
+  .nogl { position: absolute; inset: 0; display: none; place-items: center; color: var(--birch); padding: 24px; text-align: center; }
+
+  @media (max-width: 760px) {
+    .intro { top: 12vh; }
+    .booking-inner { grid-template-columns: 1fr; }
+    .step { padding-bottom: 6vh; }
+    .note { padding: 20px; }
+    .label { font-size: .78rem; }
+  }
+</style>
+</head>
+<body>
+<header class="top">
+  <a class="brand" href="#">Tamarack Hollow</a>
+  <a class="book" href="#book">Check dates</a>
+</header>
+
+<main>
+  <section class="stage" id="stage">
+    <div class="sticky">
+      <canvas id="gl" aria-label="3D model of the cabin that goes from afternoon to night as you scroll, then opens its roof"></canvas>
+      <div class="nogl" id="nogl"><p>This page shows a 3D model, and your browser has WebGL turned off.</p></div>
+      <div class="intro" id="intro">
+        <h1>A cabin at the end of a gravel road.</h1>
+        <p>One A-frame on 40 acres of Iowa's Driftless hills. Sleeps six, about 25 minutes from Decorah.</p>
+      </div>
+      <div class="label" data-at="loft">Loft: queen bed</div>
+      <div class="label" data-at="stove">Wood stove</div>
+      <div class="label" data-at="kitchen">Full kitchen</div>
+      <div class="label" data-at="tub">Hot tub</div>
+    </div>
+    <div class="steps">
+      <div class="step"></div>
+      <div class="step"><div class="note">
+        <h2>The deck faces west.</h2>
+        <p>The hot tub is out front, so you can watch the sun go down behind the ridge from the water.</p>
+      </div></div>
+      <div class="step"><div class="note">
+        <h2>Then it gets dark.</h2>
+        <p>No streetlights for miles. Light the wood stove, turn the lamps down, and count more stars than you remember.</p>
+      </div></div>
+      <div class="step"><div class="note">
+        <h2>What's inside</h2>
+        <p>A queen bed in the loft, a sleeper sofa and bunk room downstairs, a full kitchen and one and a half baths.</p>
+      </div></div>
+    </div>
+  </section>
+
+  <section class="booking" id="book">
+    <div class="booking-inner">
+      <div>
+        <h2>Check your dates</h2>
+        <p>Two-night minimum. Dogs are welcome for a $40 cleaning fee. Check-in is at 4 pm with a door code, so you never wait for a key.</p>
+        <p class="rate"><strong>$189</strong>a night, weeknights</p>
+      </div>
+      <form id="dates" novalidate>
+        <label>Check-in <input type="date" name="in" required></label>
+        <label>Check-out <input type="date" name="out" required></label>
+        <label class="wide">Guests
+          <select name="guests">
+            <option>1</option><option selected>2</option><option>3</option><option>4</option><option>5</option><option>6</option>
+          </select>
+        </label>
+        <button type="submit">Check dates</button>
+        <p class="form-msg" id="msg" role="status"></p>
+      </form>
+    </div>
+  </section>
+</main>
+<footer>Concept homepage by ITwood. Tamarack Hollow is a made-up rental for this demo.</footer>
+
+<script type="importmap">
+{ "imports": {
+  "three": "https://cdn.jsdelivr.net/npm/three@0.170.0/build/three.module.js",
+  "three/addons/": "https://cdn.jsdelivr.net/npm/three@0.170.0/examples/jsm/"
+} }
+</script>
+<script type="module">
+import * as THREE from 'three';
+
+// booking form (demo only)
+document.getElementById('dates').addEventListener('submit', e => {
+  e.preventDefault();
+  const f = e.target, msg = document.getElementById('msg');
+  if (!f.in.value || !f.out.value) { msg.textContent = 'Pick a check-in and a check-out date.'; return; }
+  const nights = Math.round((new Date(f.out.value) - new Date(f.in.value)) / 864e5);
+  if (nights < 2) { msg.textContent = 'Stays are two nights or more. Move your check-out date later.'; return; }
+  msg.textContent = `Those ${nights} nights are open. Total before tax: $${nights * 189}.`;
+});
+
+const canvas = document.getElementById('gl');
+let renderer;
+try { renderer = new THREE.WebGLRenderer({ canvas, antialias: true }); }
+catch (e) { document.getElementById('nogl').style.display = 'grid'; throw e; }
+renderer.setPixelRatio(Math.min(devicePixelRatio, 2));
+renderer.shadowMap.enabled = true;
+renderer.shadowMap.type = THREE.PCFSoftShadowMap;
+renderer.toneMapping = THREE.ACESFilmicToneMapping;
+
+const scene = new THREE.Scene();
+scene.fog = new THREE.Fog(0xb9c4c9, 40, 120);
+const camera = new THREE.PerspectiveCamera(38, 1, 0.1, 400);
+
+const sun = new THREE.DirectionalLight(0xffffff, 3);
+sun.castShadow = true;
+sun.shadow.mapSize.set(2048, 2048);
+Object.assign(sun.shadow.camera, { left: -22, right: 22, top: 22, bottom: -22, far: 120 });
+sun.shadow.bias = -0.0005;
+const hemi = new THREE.HemisphereLight(0xcfdde6, 0x56633f, 1);
+scene.add(sun, sun.target, hemi);
+
+function m(geo, mat, x = 0, y = 0, z = 0, parent = scene) {
+  const o = new THREE.Mesh(geo, mat); o.position.set(x, y, z); o.castShadow = o.receiveShadow = true; parent.add(o); return o;
+}
+
+// ground: soft hills, a bowl around the cabin
+const groundGeo = new THREE.PlaneGeometry(240, 240, 160, 160);
+groundGeo.rotateX(-Math.PI / 2);
+const gp = groundGeo.attributes.position;
+for (let i = 0; i < gp.count; i++) {
+  const x = gp.getX(i), z = gp.getZ(i), d = Math.hypot(x, z);
+  const hills = Math.sin(x * 0.06) * 2.2 + Math.cos(z * 0.05 + 1) * 2.6 + Math.sin((x + z) * 0.11) * 0.8;
+  gp.setY(i, hills * THREE.MathUtils.smoothstep(d, 12, 40) - (z < -30 ? (-z - 30) * -0.25 : 0));
+}
+groundGeo.computeVertexNormals();
+const groundMat = new THREE.MeshStandardMaterial({ color: 0x7d8456, roughness: 1 });
+const ground = m(groundGeo, groundMat); ground.castShadow = false;
+
+// pines
+const pineCount = 140;
+const cone = new THREE.ConeGeometry(1, 1, 7); cone.translate(0, 0.5, 0);
+const pineMat = new THREE.MeshStandardMaterial({ color: 0x2f4536, roughness: 0.9, flatShading: true });
+const pines = new THREE.InstancedMesh(cone, pineMat, pineCount * 2);
+pines.castShadow = true;
+const dummy = new THREE.Object3D();
+let placed = 0;
+while (placed < pineCount) {
+  const a = Math.random() * Math.PI * 2, r = 13 + Math.random() * 60;
+  const x = Math.cos(a) * r, z = Math.sin(a) * r;
+  if (z > 4 && Math.abs(x) < 10 + z * 0.4) continue; // keep the view to the front open
+  const h = 6 + Math.random() * 7, w = h * 0.3;
+  dummy.position.set(x, -0.5, z); dummy.scale.set(w, h, w); dummy.rotation.y = Math.random() * 6; dummy.updateMatrix();
+  pines.setMatrixAt(placed * 2, dummy.matrix);
+  dummy.position.y = h * 0.45; dummy.scale.set(w * 0.75, h * 0.7, w * 0.75); dummy.updateMatrix();
+  pines.setMatrixAt(placed * 2 + 1, dummy.matrix);
+  placed++;
+}
+scene.add(pines);
+
+// cabin
+const cabin = new THREE.Group(); scene.add(cabin);
+const W = 3, H = 6.5, D = 8;
+const ang = Math.atan2(H, W), L = Math.hypot(W, H);
+
+const roofTex = (() => {
+  const c = document.createElement('canvas'); c.width = 512; c.height = 64;
+  const g = c.getContext('2d'); g.fillStyle = '#2c3a47'; g.fillRect(0, 0, 512, 64);
+  for (let x = 0; x < 512; x += 32) { g.fillStyle = 'rgba(255,255,255,.09)'; g.fillRect(x, 0, 3, 64); }
+  const t = new THREE.CanvasTexture(c); t.colorSpace = THREE.SRGBColorSpace; t.wrapS = t.wrapT = THREE.RepeatWrapping; t.repeat.set(1, 1); return t;
+})();
+const roofMat = new THREE.MeshStandardMaterial({ map: roofTex, roughness: 0.45, metalness: 0.5 });
+const cedarMat = new THREE.MeshStandardMaterial({ color: 0x9a5b34, roughness: 0.75 });
+const floorMat = new THREE.MeshStandardMaterial({ color: 0xc89a6a, roughness: 0.7 });
+
+const pivots = [];
+for (const side of [-1, 1]) {
+  const pivot = new THREE.Group(); pivot.position.set(side * W, 0, 0); cabin.add(pivot);
+  const panel = m(new THREE.BoxGeometry(L + 0.5, 0.28, D + 0.8), roofMat, -side * (L / 2 + 0.1), 0.12, 0, pivot);
+  pivot.rotation.z = side < 0 ? ang : -ang;
+  pivot.userData.base = pivot.rotation.z; pivot.userData.side = side;
+  pivots.push(pivot);
+}
+
+// glass gable ends
+const tri = new THREE.Shape(); tri.moveTo(-W + 0.25, 0); tri.lineTo(W - 0.25, 0); tri.lineTo(0, H - 0.5); tri.closePath();
+const glassMat = new THREE.MeshStandardMaterial({ color: 0x31404c, roughness: 0.15, metalness: 0.3, emissive: 0xffb347, emissiveIntensity: 0, transparent: true, opacity: 0.92, side: THREE.DoubleSide });
+const front = m(new THREE.ShapeGeometry(tri), glassMat, 0, 0.2, D / 2 - 0.15, cabin);
+const back = m(new THREE.ShapeGeometry(tri), glassMat, 0, 0.2, -D / 2 + 0.15, cabin);
+const mullionMat = new THREE.MeshStandardMaterial({ color: 0x1d2b3a, transparent: true });
+const mullions = new THREE.Group(); cabin.add(mullions);
+for (const y of [2.2, 4.2]) {
+  const half = W * (1 - y / H) - 0.2;
+  m(new THREE.BoxGeometry(half * 2, 0.1, 0.12), mullionMat, 0, y, D / 2 - 0.1, mullions);
+}
+m(new THREE.BoxGeometry(0.1, H - 0.6, 0.12), mullionMat, 0, (H - 0.6) / 2 + 0.2, D / 2 - 0.1, mullions);
+
+// floors and interior
+m(new THREE.BoxGeometry(W * 2, 0.3, D), floorMat, 0, 0.05, 0, cabin);
+const loftY = 3.2, loftHalf = W * (1 - loftY / H) - 0.05;
+m(new THREE.BoxGeometry(loftHalf * 2, 0.2, D * 0.55), floorMat, 0, loftY, -D * 0.225, cabin);
+const sheet = new THREE.MeshStandardMaterial({ color: 0xeef0ea, roughness: 0.9 });
+const dark = new THREE.MeshStandardMaterial({ color: 0x1b1f22, roughness: 0.6, metalness: 0.4 });
+const sofaMat = new THREE.MeshStandardMaterial({ color: 0x56633f, roughness: 0.95 });
+m(new THREE.BoxGeometry(2.2, 0.45, 2.6), sheet, 0, loftY + 0.32, -2.4, cabin); // bed
+m(new THREE.BoxGeometry(2.4, 0.7, 0.9), sofaMat, -0.6, 0.55, 1.6, cabin);       // sofa
+const stove = m(new THREE.CylinderGeometry(0.42, 0.45, 0.9, 20), dark, 1.6, 0.65, 0.8, cabin);
+m(new THREE.CylinderGeometry(0.09, 0.09, 5.4, 12), dark, 1.6, 3.6, 0.8, cabin);
+m(new THREE.BoxGeometry(0.8, 0.95, 3), cedarMat, -2.0, 0.65, -2.2, cabin);        // kitchen run
+m(new THREE.BoxGeometry(1.4, 0.08, 0.9), cedarMat, 0.4, 0.95, -0.6, cabin);       // table
+const stoveGlow = new THREE.PointLight(0xff9a3c, 0, 9, 1.6); stoveGlow.position.set(1.4, 1.2, 1.2); cabin.add(stoveGlow);
+const loftLamp = new THREE.PointLight(0xffc77a, 0, 8, 1.6); loftLamp.position.set(0, loftY + 1.4, -1.5); cabin.add(loftLamp);
+
+// deck + hot tub
+m(new THREE.BoxGeometry(W * 2 + 2, 0.25, 4), cedarMat, 0, 0.0, D / 2 + 2, cabin);
+const tub = m(new THREE.CylinderGeometry(0.95, 0.95, 0.8, 32), cedarMat, 2.4, 0.5, D / 2 + 2.4, cabin);
+const waterMat = new THREE.MeshStandardMaterial({ color: 0x4f8fa8, roughness: 0.1, emissive: 0x4fd0ff, emissiveIntensity: 0 });
+m(new THREE.CylinderGeometry(0.82, 0.82, 0.05, 32), waterMat, 2.4, 0.88, D / 2 + 2.4, cabin);
+const porchLight = new THREE.PointLight(0xffc77a, 0, 12, 1.5); porchLight.position.set(0, 2.2, D / 2 + 0.6); cabin.add(porchLight);
+
+// stars
+const starGeo = new THREE.BufferGeometry();
+const sp = new Float32Array(1500 * 3);
+for (let i = 0; i < 1500; i++) {
+  const th = Math.random() * Math.PI * 2, ph = Math.random() * Math.PI * 0.45;
+  sp.set([Math.cos(th) * Math.sin(ph) * 180, Math.cos(ph) * 180 + 10, Math.sin(th) * Math.sin(ph) * 180], i * 3);
+}
+starGeo.setAttribute('position', new THREE.BufferAttribute(sp, 3));
+const starMat = new THREE.PointsMaterial({ color: 0xffffff, size: 1.1, sizeAttenuation: false, transparent: true, opacity: 0, fog: false });
+scene.add(new THREE.Points(starGeo, starMat));
+
+// times of day: 0 afternoon, 1 sunset, 2 night
+const C = h => new THREE.Color(h);
+const sky = [C(0x9fbfd3), C(0xe39a6b), C(0x0e1724)];
+const fogC = [C(0xb9c4c9), C(0xd59777), C(0x0e1724)];
+const sunC = [C(0xfff1d6), C(0xff9a55), C(0x6d86b8)];
+const sunI = [3.0, 2.2, 0.35];
+const hemiI = [1.0, 0.7, 0.18];
+const grassC = [C(0x7d8456), C(0x7a6a46), C(0x2a3330)];
+const sunPos = [new THREE.Vector3(30, 40, 25), new THREE.Vector3(-45, 9, 30), new THREE.Vector3(-20, 30, -30)];
+
+const clamp = (v, a, b) => Math.min(b, Math.max(a, v));
+const ease = t => t * t * (3 - 2 * t);
+const seg = (p, a, b) => ease(clamp((p - a) / (b - a), 0, 1));
+const tmpC = new THREE.Color();
+function pick(arr, t) { // t in 0..2
+  const i = Math.min(Math.floor(t), 1), f = ease(t - i);
+  return arr[i] instanceof THREE.Color ? tmpC.copy(arr[i]).lerp(arr[i + 1], f)
+       : arr[i] instanceof THREE.Vector3 ? arr[i].clone().lerp(arr[i + 1], f)
+       : arr[i] + (arr[i + 1] - arr[i]) * f;
+}
+
+const keys = [
+  { pos: [16, 6, 24], look: [0, 3.4, 0] },
+  { pos: [-15, 3.5, 17], look: [0, 2.2, 3] },
+  { pos: [7, 3.2, 17], look: [0, 3.0, 0] },
+  { pos: [12, 15, 16], look: [0, 1.6, 0.5] },
+];
+const va = new THREE.Vector3(), vb = new THREE.Vector3(), look = new THREE.Vector3();
+const mouse = { x: 0, y: 0, tx: 0, ty: 0 };
+addEventListener('pointermove', e => { mouse.tx = e.clientX / innerWidth - 0.5; mouse.ty = e.clientY / innerHeight - 0.5; });
+
+const reduce = matchMedia('(prefers-reduced-motion: reduce)').matches;
+const stage = document.getElementById('stage');
+const intro = document.getElementById('intro');
+let target = 0, p = 0;
+function readScroll() {
+  const r = stage.getBoundingClientRect();
+  target = clamp(-r.top / Math.max(1, r.height - innerHeight), 0, 1) * 3 || 0;
+}
+addEventListener('scroll', readScroll, { passive: true });
+
+function resize() {
+  const w = innerWidth, h = innerHeight;
+  renderer.setSize(w, h, false);
+  camera.aspect = w / h;
+  camera.fov = w > 760 ? 38 : 52;
+  if (w > 760) camera.setViewOffset(w, h, -w * 0.1, 0, w, h); else camera.clearViewOffset();
+  camera.updateProjectionMatrix();
+}
+addEventListener('resize', resize);
+resize(); readScroll();
+
+const anchors = {
+  loft: new THREE.Vector3(0, loftY + 0.7, -2.4),
+  stove: new THREE.Vector3(1.6, 1.2, 0.8),
+  kitchen: new THREE.Vector3(-2.0, 1.2, -2.2),
+  tub: new THREE.Vector3(2.4, 1.0, D / 2 + 2.4),
+};
+const labels = [...document.querySelectorAll('.label')];
+const tv = new THREE.Vector3();
+const clock = new THREE.Clock();
+
+renderer.setAnimationLoop(() => {
+  const dt = Math.min(clock.getDelta(), 0.05);
+  p = reduce ? target : p + (target - p) * Math.min(1, dt * 5);
+  mouse.x += (mouse.tx - mouse.x) * 0.05; mouse.y += (mouse.ty - mouse.y) * 0.05;
+
+  // light: afternoon -> sunset (0..1) -> night (1..2), stays night while the roof opens
+  const t = clamp(p, 0, 2);
+  scene.background = pick(sky, t).clone();
+  scene.fog.color.copy(pick(fogC, t));
+  sun.color.copy(pick(sunC, t)); sun.intensity = pick(sunI, t);
+  sun.position.copy(pick(sunPos, t));
+  hemi.intensity = pick(hemiI, t);
+  groundMat.color.copy(pick(grassC, t));
+  const night = seg(p, 1.2, 2.0);
+  starMat.opacity = night;
+  glassMat.emissiveIntensity = 0.15 + night * 1.1;
+  waterMat.emissiveIntensity = night * 0.9;
+  stoveGlow.intensity = night * 14; loftLamp.intensity = night * 10; porchLight.intensity = night * 12;
+  pineMat.color.setHex(0x2f4536).lerp(tmpC.setHex(0x141c1d), night);
+
+  // roof opens like a book, front glass fades
+  const open = seg(p, 2.2, 3.0);
+  for (const pv of pivots) pv.rotation.z = pv.userData.base - pv.userData.side * open * 1.55;
+  glassMat.opacity = 0.92 - open * 0.84;
+  hemi.intensity += open * 0.9;
+  mullionMat.opacity = 1 - open;
+
+  // camera
+  const i = Math.min(Math.floor(p), 2), f = ease(clamp(p - i, 0, 1));
+  camera.position.copy(va.fromArray(keys[i].pos).lerp(vb.fromArray(keys[i + 1].pos), f));
+  camera.position.x += mouse.x * 2.5; camera.position.y -= mouse.y * 1.2;
+  look.fromArray(keys[i].look).lerp(vb.fromArray(keys[i + 1].look), f);
+  camera.lookAt(look);
+  renderer.render(scene, camera);
+
+  intro.style.opacity = 1 - seg(p, 0.15, 0.55);
+  const w = innerWidth, h = innerHeight, show = seg(p, 2.65, 3.0);
+  for (const el of labels) {
+    tv.copy(anchors[el.dataset.at]).project(camera);
+    el.style.transform = `translate(${(tv.x + 1) / 2 * w - 10}px, ${(1 - tv.y) / 2 * h - 40}px)`;
+    el.style.opacity = show;
+  }
+});
+</script>
+</body>
+</html>
