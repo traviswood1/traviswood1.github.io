@@ -31,7 +31,7 @@
   .reserve { background: var(--forest); color: var(--paper); text-decoration: none; font-weight: 700; padding: 11px 18px; border-radius: 4px; }
   .reserve:hover { background: var(--river); }
 
-  .stage { position: relative; height: 560vh; }
+  .stage { position: relative; height: 680vh; }
   .sticky { position: sticky; top: 0; height: 100vh; overflow: hidden; }
   canvas { display: block; width: 100%; height: 100%; opacity: 0; transition: opacity .9s ease; }
   canvas.ready { opacity: 1; }
@@ -86,10 +86,71 @@
   .rates .reserve { display: inline-block; margin-top: 36px; background: var(--blaze); color: var(--forest); }
   .rates .reserve:hover { background: var(--paper); }
   footer { padding: 26px clamp(16px, 6vw, 96px); color: var(--soft); font-size: .9rem; }
+
+  /* booking: a price strip pinned in the corner for the whole float, opening into the full form once the trip ends */
+  .book {
+    position: absolute; z-index: 4; top: 16px; right: clamp(16px, 3vw, 40px); width: min(340px, calc(100vw - 32px));
+    background: var(--paper); border: 2px solid var(--forest); border-radius: 6px; padding: 8px 8px 8px 16px;
+    transition: top .55s cubic-bezier(.2,.7,.2,1), right .55s cubic-bezier(.2,.7,.2,1), width .55s cubic-bezier(.2,.7,.2,1), transform .55s cubic-bezier(.2,.7,.2,1), padding .55s;
+  }
+  .strip { display: flex; align-items: center; gap: 18px; }
+  .strip dl { display: flex; gap: 16px; margin: 0; flex: 1; }
+  .strip dl div { display: flex; flex-direction: column; line-height: 1.15; }
+  .strip dt { font-size: .78rem; color: var(--soft); }
+  .strip dd { margin: 0; font-weight: 900; font-size: 1.15rem; }
+  .btn { background: var(--forest); color: var(--paper); border: 0; font: inherit; font-weight: 700; padding: 11px 18px; border-radius: 4px; cursor: pointer; text-decoration: none; white-space: nowrap; }
+  .btn:hover { background: var(--river); }
+  .btn.go { background: var(--blaze); color: var(--forest); }
+  .btn.go:hover { background: var(--forest); color: var(--paper); }
+  .full { display: none; }
+  .scrim { position: absolute; inset: 0; z-index: 3; background: rgba(32,53,42,.42); opacity: 0; pointer-events: none; transition: opacity .55s; }
+
+  .book.big { top: 50%; right: 50%; transform: translate(50%, -50%); width: min(820px, calc(100vw - 32px)); padding: 28px clamp(18px, 3vw, 34px); max-height: calc(100vh - 32px); overflow: auto; }
+  .book.big .strip { display: none; }
+  .book.big .full { display: block; animation: rise .45s .2s both; }
+  .scrim.on { opacity: 1; pointer-events: auto; }
+  .stage.done .trip, .stage.done .pin-label { opacity: 0 !important; }
+  @keyframes rise { from { opacity: 0; transform: translateY(8px); } }
+
+  .full-head { display: flex; justify-content: space-between; align-items: start; gap: 16px; margin-bottom: 18px; }
+  .full h2 { font-weight: 900; font-size: clamp(1.8rem, 3.6vw, 2.6rem); line-height: .95; letter-spacing: -0.03em; margin: 0 0 8px; }
+  .full-head p { margin: 0; color: var(--soft); max-width: 34rem; }
+  .close { background: none; border: 2px solid var(--forest); border-radius: 4px; font: inherit; font-weight: 700; padding: 6px 12px; cursor: pointer; color: var(--forest); }
+  .close:hover { background: var(--forest); color: var(--paper); }
+  fieldset { border: 0; margin: 0 0 16px; padding: 0; min-width: 0; }
+  legend { font-weight: 700; margin-bottom: 8px; padding: 0; }
+  .boats { display: grid; grid-template-columns: repeat(3, 1fr); gap: 10px; }
+  .boat { position: relative; display: block; border: 2px solid #b9c4ae; border-radius: 6px; padding: 12px 14px; cursor: pointer; background: #e8eddf; }
+  .boat input { position: absolute; opacity: 0; }
+  .boat b { display: block; font-size: 1.02rem; }
+  .boat span { display: block; color: var(--soft); font-size: .88rem; }
+  .boat em { display: block; font-style: normal; font-weight: 900; font-size: 1.6rem; color: var(--contour); margin-top: 6px; }
+  .boat:has(input:checked) { border-color: var(--forest); background: var(--paper); box-shadow: inset 0 0 0 1px var(--forest); }
+  .boat:has(input:focus-visible) { outline: 3px solid var(--blaze); outline-offset: 2px; }
+  .boat:has(input:disabled) { opacity: .45; cursor: not-allowed; }
+  .fields { display: grid; grid-template-columns: repeat(3, 1fr); gap: 12px 14px; margin-bottom: 18px; }
+  .fields label { display: flex; flex-direction: column; gap: 4px; font-weight: 700; font-size: .92rem; min-width: 0; }
+  .fields .wide { grid-column: span 2; }
+  .book input:not([type=radio]), .book select { font: inherit; font-weight: 400; padding: 9px 10px; border: 2px solid #9aa892; border-radius: 4px; background: #f3f5ee; color: var(--forest); width: 100%; min-width: 0; }
+  .total { display: flex; align-items: center; justify-content: space-between; gap: 16px; flex-wrap: wrap; border-top: 2px solid var(--forest); padding-top: 16px; }
+  .total strong { font-weight: 900; font-size: 2rem; color: var(--forest); }
+  .total small { display: block; color: var(--soft); font-size: .88rem; }
+  .msg { margin: 12px 0 0; font-weight: 700; min-height: 1.4em; }
+  .msg.bad { color: #a8321c; }
+  .msg.ok { color: var(--river); }
   .nogl { position: absolute; inset: 0; display: none; place-items: center; padding: 24px; text-align: center; }
 
   @media (max-width: 760px) {
     .hello { bottom: auto; top: 90px; }
+    .book { top: 62px; right: 16px; padding: 6px 6px 6px 12px; }
+    .strip { gap: 10px; }
+    .strip dl { gap: 10px; }
+    .strip dd { font-size: 1rem; }
+    .strip .btn { padding: 9px 12px; }
+    .hello { top: 140px; }
+    .book.big { padding: 20px 16px; }
+    .boats, .fields { grid-template-columns: 1fr; }
+    .fields .wide { grid-column: auto; }
     .trip { top: auto; bottom: 16px; left: 16px; right: 16px; width: auto; transform: none; padding: 14px 16px 4px; }
     .trip h2, .trip > p { display: none; }
     .trip li { display: none; border: 0; }
@@ -105,7 +166,6 @@
 <body>
 <header class="top">
   <a class="brand" href="#">Bluffline Outfitters</a>
-  <a class="reserve" href="#rates">Reserve a canoe</a>
 </header>
 
 <main>
@@ -127,6 +187,49 @@
           <li><strong>Take-out at Mill Bridge</strong><span class="mile">Mile 9</span><p>Pull out under the old stone bridge, next to the water mill. Our van waits at the landing and drives you back to your car.</p></li>
         </ol>
       </aside>
+      <div class="scrim" id="scrim"></div>
+      <section class="book" id="book" aria-label="Book a trip">
+        <div class="strip">
+          <dl>
+            <div><dt>Canoe</dt><dd>$65</dd></div>
+            <div><dt>Kayak</dt><dd>$45</dd></div>
+            <div><dt>Tube</dt><dd>$20</dd></div>
+          </dl>
+          <button class="btn go" type="button" id="openBook">Book a trip</button>
+        </div>
+        <div class="full">
+          <div class="full-head">
+            <div>
+              <h2>Book your float</h2>
+              <p>Every rental includes paddles, life jackets, a dry bag, and the shuttle back. Open May through September. You pay at the shop.</p>
+            </div>
+            <button class="close" type="button" id="closeBook">Back to the map</button>
+          </div>
+          <form id="bookForm" novalidate>
+            <fieldset>
+              <legend>Boat</legend>
+              <div class="boats">
+                <label class="boat"><input type="radio" name="boat" value="canoe" data-price="65" data-name="canoe" checked><b>Canoe</b><span>Seats 2</span><em>$65</em></label>
+                <label class="boat"><input type="radio" name="boat" value="kayak" data-price="45" data-name="kayak"><b>Solo kayak</b><span>Seats 1</span><em>$45</em></label>
+                <label class="boat"><input type="radio" name="boat" value="tube" data-price="20" data-name="tube"><b>River tube</b><span>Short float only</span><em>$20</em></label>
+              </div>
+            </fieldset>
+            <div class="fields">
+              <label>Trip<select name="trip"><option value="Mill Bridge, 9 miles">Mill Bridge, 9 miles</option><option value="the short float, 4 miles">Short float, 4 miles</option></select></label>
+              <label>Date<input type="date" name="date" required></label>
+              <label>Launch time<select name="time"><option>8:30 am</option><option selected>10:00 am</option><option>11:30 am</option><option>1:00 pm</option></select></label>
+              <label>How many<input type="number" name="count" min="1" max="8" value="1" inputmode="numeric"></label>
+              <label>Name<input type="text" name="name" autocomplete="name" required></label>
+              <label>Email<input type="email" name="email" autocomplete="email" required></label>
+            </div>
+            <div class="total">
+              <div><strong id="total">$65</strong><small id="totalNote">1 canoe for the day</small></div>
+              <button class="btn go" type="submit">Request booking</button>
+            </div>
+            <p class="msg" id="msg" role="status"></p>
+          </form>
+        </div>
+      </section>
       <span class="pin-label" data-stop="0">Put-in</span>
       <span class="pin-label" data-stop="1">Cold Spring</span>
       <span class="pin-label" data-stop="2">Lunch</span>
@@ -727,7 +830,9 @@ const stage = document.getElementById('stage');
 let target = 0, p = 0;
 function readScroll() {
   const r = stage.getBoundingClientRect();
-  target = clamp(-r.top / Math.max(1, r.height - innerHeight), 0, 1) * 4 || 0;
+  const raw = clamp(-r.top / Math.max(1, r.height - innerHeight), 0, 1) || 0;
+  target = Math.min(1, raw / FLOAT_END) * 4;
+  setDone(raw > DONE_AT);
 }
 addEventListener('scroll', readScroll, { passive: true });
 
@@ -747,6 +852,48 @@ function chase(t) {
   chaseLook.copy(ahead).add(up.clone().multiplyScalar(1));
 }
 
+// booking strip and the full form that takes over once the float ends
+const book = document.getElementById('book'), scrim = document.getElementById('scrim'), form = document.getElementById('bookForm');
+const FLOAT_END = 0.86, DONE_AT = 0.92; // share of the stage's scroll used by the float, and where the form opens
+const stageTop = f => stage.offsetTop + (stage.offsetHeight - innerHeight) * f;
+let done = false;
+function setDone(on) {
+  if (on === done) return; done = on;
+  book.classList.toggle('big', on); scrim.classList.toggle('on', on); stage.classList.toggle('done', on);
+  book.setAttribute('aria-modal', on ? 'true' : 'false'); book.setAttribute('role', on ? 'dialog' : 'region');
+}
+document.getElementById('openBook').addEventListener('click', () => scrollTo({ top: stageTop(0.97), behavior: reduce ? 'auto' : 'smooth' }));
+document.getElementById('closeBook').addEventListener('click', () => scrollTo({ top: stageTop(FLOAT_END * 0.98), behavior: reduce ? 'auto' : 'smooth' }));
+scrim.addEventListener('click', () => document.getElementById('closeBook').click());
+addEventListener('keydown', e => { if (e.key === 'Escape' && done) document.getElementById('closeBook').click(); });
+document.querySelector('.top .reserve')?.addEventListener('click', e => { e.preventDefault(); document.getElementById('openBook').click(); });
+document.querySelectorAll('.rates .reserve').forEach(a => a.addEventListener('click', e => { e.preventDefault(); document.getElementById('openBook').click(); }));
+
+const fmtDate = d => d.toLocaleDateString('en-US', { weekday: 'short', month: 'short', day: 'numeric', timeZone: 'UTC' });
+const plural = (n, w) => `${n} ${w}${n === 1 ? '' : 's'}`;
+function price() {
+  const b = form.boat.value === 'tube';
+  form.trip.options[0].disabled = b; if (b) form.trip.value = form.trip.options[1].value;
+  const sel = form.querySelector('input[name=boat]:checked'), n = clamp(Math.round(+form.count.value || 1), 1, 8);
+  document.getElementById('total').textContent = `$${sel.dataset.price * n}`;
+  document.getElementById('totalNote').textContent = `${plural(n, sel.dataset.name)} for the day`;
+}
+form.addEventListener('input', price); form.addEventListener('change', price);
+{ const t = new Date(); form.date.min = t.toISOString().slice(0, 10); }
+form.addEventListener('submit', e => {
+  e.preventDefault();
+  const msg = document.getElementById('msg'), bad = t => { msg.className = 'msg bad'; msg.textContent = t; };
+  if (!form.date.value) return bad('Pick a date for your trip.');
+  const d = new Date(form.date.value + 'T00:00:00Z'), m = d.getUTCMonth();
+  if (form.date.value < form.date.min) return bad('That date has passed. Pick a date from today on.');
+  if (m < 4 || m > 8) return bad('We rent May through September. Pick a date in those months.');
+  if (!form.name.value.trim()) return bad('Add your name so we know who to expect.');
+  if (!/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(form.email.value)) return bad('Add an email address so we can confirm your booking.');
+  const sel = form.querySelector('input[name=boat]:checked'), n = clamp(Math.round(+form.count.value || 1), 1, 8);
+  msg.className = 'msg ok';
+  msg.textContent = `Request sent: ${plural(n, sel.dataset.name)}, ${form.trip.value}, ${fmtDate(d)} at ${form.time.value}. We'll email you within a day to confirm.`;
+});
+price();
 const hello = document.getElementById('hello');
 const trip = document.getElementById('trip');
 const items = [...trip.querySelectorAll('li')];
@@ -754,7 +901,7 @@ const pinLabels = [...document.querySelectorAll('.pin-label')];
 let now = -1;
 items.forEach((li, i) => {
   li.tabIndex = 0; li.setAttribute('role', 'button');
-  const go = () => scrollTo({ top: stage.offsetTop + (stage.offsetHeight - innerHeight) * (1 + i) / 4, behavior: reduce ? 'auto' : 'smooth' });
+  const go = () => scrollTo({ top: stage.offsetTop + (stage.offsetHeight - innerHeight) * FLOAT_END * (1 + i) / 4, behavior: reduce ? 'auto' : 'smooth' });
   li.addEventListener('click', go);
   li.addEventListener('keydown', e => { if (e.key === 'Enter' || e.key === ' ') { e.preventDefault(); go(); } });
 });
@@ -770,7 +917,7 @@ function resize() {
 addEventListener('resize', resize);
 resize(); readScroll();
 const qp = new URLSearchParams(location.search).get('p');
-if (qp !== null) { removeEventListener('scroll', readScroll); target = p = +qp * 4; } // ?p=0..1 freezes a scroll point for screenshots
+if (qp !== null) { removeEventListener('scroll', readScroll); target = p = Math.min(1, +qp) * 4; setDone(+qp > 1); } // ?p=0..1 freezes a scroll point for screenshots
 
 const clock = new THREE.Clock();
 let onScreen = true;
