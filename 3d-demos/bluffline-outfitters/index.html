@@ -177,6 +177,7 @@ const river = new THREE.CatmullRomCurve3([
   [22, 0, 10], [32, 0, -4], [40, 0, -20], [54, 0, -24],
 ].map(a => new THREE.Vector3(...a)), false, 'catmullrom', 0.4);
 const samples = river.getSpacedPoints(400);
+const widen = t => 3.2 * Math.exp(-(((t - 0.595) / 0.045) ** 2)); // the river spreads into a slow, wide reach across from the gravel bar
 
 // terrain: flat valley along the river, steep bluffs, rolling uplands
 const SIZE = 140, SEG = 220;
@@ -193,12 +194,17 @@ function noise(x, z) {
 const fbm = (x, z) => noise(x, z) * 0.55 + noise(x * 2.1, z * 2.1) * 0.28 + noise(x * 4.3, z * 4.3) * 0.17;
 for (let i = 0; i < pos.count; i++) {
   const x = pos.getX(i), z = pos.getZ(i);
-  let d = Infinity;
+  let d = Infinity, kd = 0;
   for (let k = 0; k < samples.length; k += 2) {
     const s = samples[k], dd = (s.x - x) ** 2 + (s.z - z) ** 2;
-    if (dd < d) d = dd;
+    if (dd < d) { d = dd; kd = k; }
   }
   d = Math.sqrt(d);
+  { // the wide reach only pushes the bank opposite the gravel bar
+    const a = samples[Math.max(0, kd - 1)], b = samples[Math.min(samples.length - 1, kd + 1)], s = samples[kd];
+    const tx = b.x - a.x, tz = b.z - a.z; // side (-tz, tx) points to the gravel-bar bank
+    if ((x - s.x) * -tz + (z - s.z) * tx < 0) d = Math.max(0, d - widen(kd / 400));
+  }
   const bluff = THREE.MathUtils.smoothstep(d, 3.5, 9) * 7.5;
   const upland = fbm(x * 0.06, z * 0.06) * 6 * THREE.MathUtils.smoothstep(d, 6, 20);
   const floor = fbm(x * 0.2, z * 0.2) * 0.5;
@@ -265,13 +271,14 @@ function heightAt(x, z) {
 }
 
 // water ribbon
-function ribbon(curve, width, y, n = 400) {
+function ribbon(curve, width, y, n = 400, extra = () => 0) {
   const pts = curve.getSpacedPoints(n), verts = [], idx = [];
   const up = new THREE.Vector3(0, 1, 0), side = new THREE.Vector3();
   pts.forEach((pt, i) => {
     const t = curve.getTangentAt(i / n);
-    side.crossVectors(t, up).normalize().multiplyScalar(width / 2);
-    verts.push(pt.x + side.x, y, pt.z + side.z, pt.x - side.x, y, pt.z - side.z);
+    side.crossVectors(t, up).normalize();
+    const wa = width / 2, wb = width / 2 + extra(i / n);
+    verts.push(pt.x + side.x * wa, y, pt.z + side.z * wa, pt.x - side.x * wb, y, pt.z - side.z * wb);
     if (i < n) { const a = i * 2; idx.push(a, a + 1, a + 2, a + 1, a + 3, a + 2); }
   });
   const g = new THREE.BufferGeometry();
@@ -289,7 +296,7 @@ const waterMat = new THREE.ShaderMaterial({
       gl_FragColor = vec4(c, 1.0);
     }`,
 });
-const riverGeo = ribbon(river, 2.4, 0.22);
+const riverGeo = ribbon(river, 2.4, 0.22, 400, widen);
 {
   const n = riverGeo.attributes.position.count / 2, flow = [];
   for (let i = 0; i < n; i++) flow.push(0, i / n, 1, i / n);
@@ -396,23 +403,43 @@ function makeCanoe(color, withCrew) {
       const bs = new THREE.Shape(); bs.moveTo(-0.03, 0.22); bs.quadraticCurveTo(-0.1, 0.1, -0.09, -0.12); bs.quadraticCurveTo(-0.08, -0.24, 0, -0.25); bs.quadraticCurveTo(0.08, -0.24, 0.09, -0.12); bs.quadraticCurveTo(0.1, 0.1, 0.03, 0.22); bs.closePath();
       const blade = new THREE.Mesh(new THREE.ExtrudeGeometry(bs, { depth: 0.02, bevelEnabled: false }), wood); blade.position.set(0, -0.82, -0.01); paddle.add(blade);
       // arms reach from the shoulders to the grip and the shaft, updated every frame
-      const arms = [-1, 1].map(sx => { const m = new THREE.Mesh(new THREE.CylinderGeometry(0.035, 0.04, 1, 6), lam(shirt)); p.add(m); const hand = new THREE.Mesh(new THREE.SphereGeometry(0.045, 8, 6), skin); p.add(hand); return { m, hand, sx }; });
+      const sleeve = lam(shirt), arms = [-1, 1].map(sx => {
+        const upper = new THREE.Mesh(new THREE.CylinderGeometry(0.038, 0.042, 1, 6), sleeve), fore = new THREE.Mesh(new THREE.CylinderGeometry(0.03, 0.036, 1, 6), skin);
+        const elbow = new THREE.Mesh(new THREE.SphereGeometry(0.039, 8, 6), sleeve), hand = new THREE.Mesh(new THREE.SphereGeometry(0.045, 8, 6), skin);
+        p.add(upper, fore, elbow, hand); return { upper, fore, elbow, hand, sx };
+      });
       paddle.userData = { flip, arms, body: p };
       p.userData.paddle = paddle;
     }
   }
   return c;
 }
-const armY = new THREE.Vector3(0, 1, 0), aS = new THREE.Vector3(), aH = new THREE.Vector3();
-function poseArms(pd) {
+const armY = new THREE.Vector3(0, 1, 0), vS = new THREE.Vector3(), vE = new THREE.Vector3(), vD = new THREE.Vector3(), vP = new THREE.Vector3();
+const hTop = new THREE.Vector3(), hLow = new THREE.Vector3(), qTwist = new THREE.Quaternion();
+const limb = (m, a, b) => { vD.subVectors(b, a); m.position.copy(a).addScaledVector(vD, 0.5); m.scale.set(1, vD.length(), 1); m.quaternion.setFromUnitVectors(armY, vD.normalize()); };
+// one paddler's stroke: catch forward, pull back to the hip with the blade buried, lift and feather it forward again.
+// The grip hand stays out in front of the chest; the shaft hand works low over the gunwale. Elbows bend outward.
+function stroke(pd, s) {
   const { flip, arms, body } = pd.userData;
+  const power = s < 0.6, k = power ? ease(s / 0.6) : ease((s - 0.6) / 0.4);
+  const zc = power ? 0.36 - 0.36 * k : 0.36 * k, lift = power ? 0 : Math.sin(Math.PI * k);
+  hLow.set(flip * (0.34 + lift * 0.05), 0.12 + lift * 0.16, zc);
+  hTop.set(flip * (0.2 + lift * 0.03), 0.5 + lift * 0.08, zc + 0.22);
+  body.rotation.y = flip * (zc - 0.18) * 0.5; // shoulders turn into the reach
+  // shaft runs through both hands; the grip sits just above the top hand
+  vD.subVectors(hTop, hLow).normalize();
+  pd.quaternion.setFromUnitVectors(armY, vD);
+  qTwist.setFromAxisAngle(armY, flip * lift * Math.PI / 2); pd.quaternion.multiply(qTwist); // feather the blade on the way forward
+  pd.position.copy(hTop).addScaledVector(vD, -0.6);
   for (const a of arms) {
-    // the arm on the paddle side holds the shaft low, the other holds the grip
-    aH.set(0, a.sx === flip ? 0.05 : 0.62, 0); pd.localToWorld(aH); body.worldToLocal(aH);
-    aS.set(a.sx * 0.15, 0.4, 0.02);
-    const dir = aH.clone().sub(aS), len = dir.length();
-    a.m.position.copy(aS).addScaledVector(dir, 0.5); a.m.scale.set(1, len, 1); a.m.quaternion.setFromUnitVectors(armY, dir.normalize());
-    a.hand.position.copy(aH);
+    const hand = a.sx === flip ? hLow : hTop;
+    vS.set(a.sx * 0.15, 0.4, 0.03);
+    const L = 0.3, dist = vS.distanceTo(hand);
+    vP.set(a.sx, -1, -0.3); // elbows drop and point out to the side
+    vD.subVectors(hand, vS).normalize(); vP.addScaledVector(vD, -vP.dot(vD)).normalize();
+    const off = dist < 2 * L ? Math.sqrt(L * L - (dist / 2) ** 2) : 0;
+    vE.addVectors(vS, hand).multiplyScalar(0.5).addScaledVector(vP, off);
+    limb(a.upper, vS, vE); limb(a.fore, vE, hand); a.elbow.position.copy(vE); a.hand.position.copy(hand);
   }
 }
 const canoe = makeCanoe(0xc8432a, true); canoe.scale.setScalar(1.15); scene.add(canoe);
@@ -641,12 +668,12 @@ const rTrip = s => T0 + (T1 - T0) * s;
 {
   const g = placeAt(rTrip(stopsT[2]), 'picnic');
   const bar = new THREE.Mesh(new THREE.SphereGeometry(1, 18, 8), new THREE.MeshLambertMaterial({ color: 0xd2c7aa, flatShading: true }));
-  bar.scale.set(1.15, 0.12, 3.2); bar.position.set(-2.05, 0.24, 0.2); g.add(bar);
+  bar.scale.set(1.3, 0.12, 3.4); bar.position.set(-2.6, 0.24, 0.2); g.add(bar);
   for (let i = 0; i < 40; i++) { // scattered cobbles
-    const a = hash(i, 9) * Math.PI * 2, r = Math.sqrt(hash(i, 4)), x = -2.05 + Math.cos(a) * r * 1.0, z = 0.2 + Math.sin(a) * r * 3.0;
+    const a = hash(i, 9) * Math.PI * 2, r = Math.sqrt(hash(i, 4)), x = -2.6 + Math.cos(a) * r * 1.15, z = 0.2 + Math.sin(a) * r * 3.0;
     const st = new THREE.Mesh(new THREE.DodecahedronGeometry(0.05 + hash(i, 7) * 0.06, 0), lam(i % 3 ? 0xb3a88c : 0x9a917a)); st.position.set(x, 0.33, z); g.add(st);
   }
-  const beached = makeCanoe(0x2d6f8f, false); beached.position.set(-2.1, 0.62, 1.2); beached.rotation.set(0, 0.3, 0.08); g.add(beached);
+  const beached = makeCanoe(0x2d6f8f, false); beached.position.set(-2.75, 0.62, 1.2); beached.rotation.set(0, 0.3, 0.08); g.add(beached);
   const timber = lam(0x9a6a3c), dk = lam(0x6e4a2a);
   const table = (x, z, ry, cloth) => {
     const t = new THREE.Group(); t.position.set(x, groundAt(g, x, z), z); t.rotation.y = ry; g.add(t);
@@ -657,17 +684,17 @@ const rTrip = s => T0 + (T1 - T0) * s;
     return t;
   };
   const checks = (() => { const c = document.createElement('canvas'); c.width = c.height = 64; const x = c.getContext('2d'); x.fillStyle = '#f1ead7'; x.fillRect(0, 0, 64, 64); x.fillStyle = 'rgba(200,67,42,.75)'; for (let i = 0; i < 8; i++) { x.fillRect(i * 8, 0, 4, 64); x.fillRect(0, i * 8, 64, 4); } const t = new THREE.CanvasTexture(c); t.colorSpace = THREE.SRGBColorSpace; t.magFilter = THREE.NearestFilter; return t; })();
-  const t1 = table(-3.7, -1.1, 0.15, checks), t2 = table(-3.9, 1.6, -0.2);
+  const t1 = table(-4.4, -1.1, 0.15, checks), t2 = table(-4.6, 1.6, -0.2);
   box(0.36, 0.22, 0.26, lam(0x2d6f8f), 0.05, 0.88, -0.3, t1); box(0.37, 0.04, 0.27, lam(0xf1ead7), 0.05, 1.0, -0.3, t1);
   const jug = new THREE.Mesh(new THREE.CylinderGeometry(0.08, 0.08, 0.22, 10), lam(0xe8b923)); jug.position.set(-0.1, 0.88, 0.35); t1.add(jug);
   box(0.28, 0.06, 0.2, lam(0xc9a46a), 0.12, 0.8, 0.3, t1);
   // fire ring between the tables, and a trash barrel
-  const fx = -3.1, fz = 0.35, fy = groundAt(g, fx, fz);
+  const fx = -3.85, fz = 0.35, fy = groundAt(g, fx, fz);
   const ring = new THREE.Mesh(new THREE.TorusGeometry(0.32, 0.09, 6, 14), lam(0x8b8f86)); ring.rotation.x = Math.PI / 2; ring.position.set(fx, fy + 0.06, fz); g.add(ring);
   for (let i = 0; i < 3; i++) { const lg = new THREE.Mesh(new THREE.CylinderGeometry(0.04, 0.04, 0.45, 6), dk); lg.rotation.set(Math.PI / 2 - 0.4, i * 2.1, 0); lg.position.set(fx, fy + 0.12, fz); g.add(lg); }
-  const barrel = new THREE.Mesh(new THREE.CylinderGeometry(0.2, 0.2, 0.6, 12), lam(0x20352a)); barrel.position.set(-4.6, groundAt(g, -4.6, 0.2) + 0.3, 0.2); g.add(barrel);
+  const barrel = new THREE.Mesh(new THREE.CylinderGeometry(0.2, 0.2, 0.6, 12), lam(0x20352a)); barrel.position.set(-5.3, groundAt(g, -5.3, 0.2) + 0.3, 0.2); g.add(barrel);
   // broadleaf shade trees
-  [[-5.2, -2.4, 1.1], [-5.6, 0.6, 1.25], [-4.9, 3.2, 1.0], [-2.9, -3.3, 0.85]].forEach(([x, z, s], i) => {
+  [[-5.9, -2.4, 1.1], [-6.3, 0.6, 1.25], [-5.6, 3.2, 1.0], [-3.8, -3.4, 0.85]].forEach(([x, z, s], i) => {
     const y = groundAt(g, x, z);
     const trunk = new THREE.Mesh(new THREE.CylinderGeometry(0.1 * s, 0.15 * s, 1.8 * s, 7), dk); trunk.position.set(x, y + 0.9 * s, z); g.add(trunk);
     for (let k = 0; k < 4; k++) {
@@ -747,18 +774,15 @@ renderer.setAnimationLoop(() => {
   camLook.copy(over.look).lerp(chaseLook, blend);
   camera.position.copy(camPos); camera.lookAt(camLook);
   const closeUp = new URLSearchParams(location.search).get('look'); // ?look=shop|bridge|mill|canoe for close-up checks
-  if (closeUp) { const o = closeUp === 'canoe' ? canoe : scene.getObjectByName(closeUp); const c = new THREE.Vector3(); o.getWorldPosition(c); camera.position.copy(o.localToWorld(closeUp === 'mill' ? new THREE.Vector3(-6, 4, 6) : new THREE.Vector3(8, 5, 5))); camera.lookAt(c.x, c.y + 0.8, c.z); }
+  if (closeUp) { const o = closeUp === 'canoe' || closeUp === 'crew' ? canoe : scene.getObjectByName(closeUp); const c = new THREE.Vector3(); o.getWorldPosition(c); camera.position.copy(o.localToWorld(closeUp === 'mill' ? new THREE.Vector3(-6, 4, 6) : closeUp === 'crew' ? new THREE.Vector3(3.6, 1.6, 0.4) : new THREE.Vector3(8, 5, 5))); camera.lookAt(c.x, c.y + 0.8, c.z); }
 
   waterMat.uniforms.time.value += reduce ? 0 : dt;
   const cp = route.getPointAt(t), ct = route.getTangentAt(t);
   canoe.position.set(cp.x, 0.52 + Math.sin(clock.elapsedTime * 2) * 0.03, cp.z);
   canoe.rotation.y = Math.atan2(ct.x, ct.z);
   canoe.visible = p > 0.5;
-  paddlers.forEach((pd, i) => {
-    const a = reduce ? 0 : clock.elapsedTime * 2.4 + i * Math.PI;
-    pd.position.x = pd.userData.flip * 0.34; pd.rotation.z = pd.userData.flip * 0.3; pd.rotation.x = Math.sin(a) * 0.55;
-  });
-  canoe.updateMatrixWorld(true); paddlers.forEach(poseArms);
+  const sPh = reduce ? 0.3 : (clock.elapsedTime * 0.42) % 1; // tandem paddlers stroke together
+  paddlers.forEach(pd => stroke(pd, sPh));
   if (!reduce) wheel.rotation.x -= dt * 0.9;
   routeGeo.setDrawRange(0, Math.floor(routeTotal * clamp(t - 0.022, 0, 1) / 3) * 3); // ends at the canoe's stern
   renderer.render(scene, camera);
