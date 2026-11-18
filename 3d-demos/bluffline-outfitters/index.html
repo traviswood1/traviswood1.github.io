@@ -280,6 +280,9 @@ const river = new THREE.CatmullRomCurve3([
   [22, 0, 10], [32, 0, -4], [40, 0, -20], [54, 0, -24],
 ].map(a => new THREE.Vector3(...a)), false, 'catmullrom', 0.4);
 const samples = river.getSpacedPoints(400);
+const extA = new THREE.LineCurve3(river.getPointAt(0).clone().addScaledVector(river.getTangentAt(0), -26), river.getPointAt(0));
+const extB = new THREE.LineCurve3(river.getPointAt(1), river.getPointAt(1).clone().addScaledVector(river.getTangentAt(1), 26));
+const carve = samples.concat(extA.getSpacedPoints(40), extB.getSpacedPoints(40)); // valley carved along the river and its run off the map
 const widen = t => 3.2 * Math.exp(-(((t - 0.595) / 0.045) ** 2)); // the river spreads into a slow, wide reach across from the gravel bar
 
 // terrain: flat valley along the river, steep bluffs, rolling uplands
@@ -295,32 +298,55 @@ function noise(x, z) {
   return a + (b - a) * u + (c - a) * v + (a - b - c + d) * u * v;
 }
 const fbm = (x, z) => noise(x, z) * 0.55 + noise(x * 2.1, z * 2.1) * 0.28 + noise(x * 4.3, z * 4.3) * 0.17;
-// the hills at both ends of Mill Bridge are cut down level with its deck, then the road climbs back up to the hilltops
+// the hills at both ends of Mill Bridge are cut down level with its deck; from there the road climbs on a smoothed grade and runs off the map
 const BR = (() => { const tn = river.getTangentAt(0.872); return { p: river.getPointAt(0.872), ax: new THREE.Vector2(tn.z, -tn.x).normalize(), az: new THREE.Vector2(tn.x, tn.z).normalize() }; })(); // 0.872 = the bridge's spot (millT)
 const bridgeLocal = (x, z) => { const dx = x - BR.p.x, dz = z - BR.p.z; return [dx * BR.ax.x + dz * BR.ax.y, dx * BR.az.x + dz * BR.az.y]; };
-const DECK = 1.75, ROAD_END = 22;
-const cutW = (x, z) => {
-  const [lx, lz] = bridgeLocal(x, z), ax = Math.abs(lx), az = Math.abs(lz), S = THREE.MathUtils.smoothstep;
-  return S(ax, 2.6, 3.4) * (1 - S(ax, 9, ROAD_END)) * (1 - S(az, 2.2, 4.5));
-};
-for (let i = 0; i < pos.count; i++) {
-  const x = pos.getX(i), z = pos.getZ(i);
+const DECK = 1.75, SS = THREE.MathUtils.smoothstep;
+function naturalH(x, z) {
   let d = Infinity, kd = 0;
-  for (let k = 0; k < samples.length; k += 2) {
-    const s = samples[k], dd = (s.x - x) ** 2 + (s.z - z) ** 2;
+  for (let k = 0; k < carve.length; k += 2) {
+    const s = carve[k], dd = (s.x - x) ** 2 + (s.z - z) ** 2;
     if (dd < d) { d = dd; kd = k; }
   }
   d = Math.sqrt(d);
-  { // the wide reach only pushes the bank opposite the gravel bar
-    const a = samples[Math.max(0, kd - 1)], b = samples[Math.min(samples.length - 1, kd + 1)], s = samples[kd];
+  if (kd < 401) { // the wide reach only pushes the bank opposite the gravel bar
+    const a = carve[Math.max(0, kd - 1)], b = carve[Math.min(400, kd + 1)], s = carve[kd];
     const tx = b.x - a.x, tz = b.z - a.z; // side (-tz, tx) points to the gravel-bar bank
     if ((x - s.x) * -tz + (z - s.z) * tx < 0) d = Math.max(0, d - widen(kd / 400));
   }
-  const bluff = THREE.MathUtils.smoothstep(d, 3.5, 9) * 7.5;
-  const upland = fbm(x * 0.06, z * 0.06) * 6 * THREE.MathUtils.smoothstep(d, 6, 20);
+  const bluff = SS(d, 3.5, 9) * 7.5;
+  const upland = fbm(x * 0.06, z * 0.06) * 6 * SS(d, 6, 20);
   const floor = fbm(x * 0.2, z * 0.2) * 0.5;
-  const h0 = bluff + upland + floor - (d < 2.4 ? (2.4 - d) * 0.6 : 0);
-  pos.setY(i, h0 + (DECK - 0.02 - h0) * cutW(x, z));
+  return bluff + upland + floor - (d < 2.4 ? (2.4 - d) * 0.6 : 0);
+}
+// two roads leave the bridge: one straight east, one that climbs out and bends south; both end past the map edge
+const roads = (() => {
+  const at = d => new THREE.Vector3(BR.p.x + BR.ax.x * d, 0, BR.p.z + BR.ax.y * d);
+  const paths = [
+    [at(-2.6), at(-12), at(-30), at(-60), at(-95)],
+    [at(2.6), at(12), at(22), new THREE.Vector3(12.5, 0, -31), new THREE.Vector3(11, 0, -42), new THREE.Vector3(11, 0, -62), new THREE.Vector3(11, 0, -95)],
+  ];
+  return paths.map(pp => {
+    const curve = new THREE.CatmullRomCurve3(pp), len = curve.getLength(), n = Math.ceil(len / 0.5);
+    const pts = curve.getSpacedPoints(n), s = pts.map((_, i) => 2.6 + len * i / n);
+    // follow the lie of the land, but averaged over ~16 units so the grade has no bumps
+    let h = pts.map(q => naturalH(q.x, q.z));
+    for (let pass = 0; pass < 3; pass++) h = h.map((_, i) => { let t = 0, c = 0; for (let j = Math.max(0, i - 16); j <= Math.min(n, i + 16); j++) { t += h[j]; c++; } return t / c; });
+    const prof = h.map((hv, i) => DECK + (hv - DECK) * SS(s[i], 9, 36)); // level with the deck near the bridge, easing up to the hilltop
+    return { curve, pts, s, prof };
+  });
+})();
+function roadNear(x, z) {
+  let best = Infinity, bp = 0;
+  for (const r of roads) for (let i = 0; i < r.pts.length; i++) { const q = r.pts[i], dd = (q.x - x) ** 2 + (q.z - z) ** 2; if (dd < best) { best = dd; bp = r.prof[i]; } }
+  return [Math.sqrt(best), bp];
+}
+for (let i = 0; i < pos.count; i++) {
+  const x = pos.getX(i), z = pos.getZ(i);
+  const h0 = naturalH(x, z), [dr, rp] = roadNear(x, z);
+  let w = 1 - SS(dr, 1.9, 6.0); // road bed, with wide shoulders blending into the hillside
+  if (w > 0) { const [lx, lz] = bridgeLocal(x, z); if (Math.abs(lz) < 10) w *= SS(Math.abs(lx), 2.6, 3.4); } // never fill the river under the bridge
+  pos.setY(i, h0 + (rp - 0.02 - h0) * w);
 }
 geo.computeVertexNormals();
 
@@ -373,7 +399,7 @@ function heightAt(x, z) {
     const x = (Math.random() - 0.5) * 110, z = (Math.random() - 0.5) * 110;
     if (Math.hypot(x, z) > 52) continue;
     if (clear.some(([q, r]) => Math.hypot(q.x - x, q.z - z) < r)) continue;
-    { const [lx, lz] = bridgeLocal(x, z); if (Math.abs(lz) < 4.6 && Math.abs(lx) < ROAD_END) continue; } // keep the bridge road clear
+    if (roadNear(x, z)[0] < 5) continue; // keep the roads clear
     const h = heightAt(x, z);
     if (h < 1.4 || fbm(x * 0.09 + 7, z * 0.09) < 0.42) continue;
     const s = 0.45 + Math.random() * 0.45;
@@ -399,14 +425,14 @@ function ribbon(curve, width, y, n = 400, extra = () => 0) {
   return g;
 }
 const waterMat = new THREE.ShaderMaterial({
-  uniforms: { time: { value: 0 } }, side: THREE.DoubleSide,
-  vertexShader: `attribute vec2 flow; varying vec2 vF; void main() { vF = flow; gl_Position = projectionMatrix * modelViewMatrix * vec4(position, 1.0); }`,
-  fragmentShader: `uniform float time; varying vec2 vF;
+  uniforms: { time: { value: 0 }, paper: { value: PAPER } }, side: THREE.DoubleSide,
+  vertexShader: `attribute vec2 flow; varying vec2 vF; varying vec2 vW; void main() { vF = flow; vW = position.xz; gl_Position = projectionMatrix * modelViewMatrix * vec4(position, 1.0); }`,
+  fragmentShader: `uniform float time; uniform vec3 paper; varying vec2 vF; varying vec2 vW;
     void main() {
       vec3 c = mix(vec3(0.16, 0.40, 0.52), vec3(0.20, 0.47, 0.60), 1.0 - abs(vF.x - 0.5) * 2.0);
       float streak = smoothstep(0.93, 1.0, sin(vF.y * 900.0 - time * 2.5 + sin(vF.x * 9.0 + vF.y * 40.0) * 2.0));
       c += streak * 0.12 * (1.0 - abs(vF.x - 0.5) * 1.6);
-      gl_FragColor = vec4(c, 1.0);
+      gl_FragColor = vec4(mix(c, paper, smoothstep(46.0, 68.0, length(vW))), 1.0);
     }`,
 });
 const riverGeo = ribbon(river, 2.4, 0.22, 400, widen);
@@ -416,6 +442,11 @@ const riverGeo = ribbon(river, 2.4, 0.22, 400, widen);
   riverGeo.setAttribute('flow', new THREE.Float32BufferAttribute(flow, 2));
 }
 scene.add(new THREE.Mesh(riverGeo, waterMat));
+for (const [ext, y0] of [[extA, -26 / 154], [extB, 1]]) {
+  const g = ribbon(ext, 2.4, 0.22, 40), flow = [];
+  for (let i = 0; i <= 40; i++) { const y = y0 + (i / 40) * 26 / 154; flow.push(0, y, 1, y); }
+  g.setAttribute('flow', new THREE.Float32BufferAttribute(flow, 2)); scene.add(new THREE.Mesh(g, waterMat));
+}
 
 // trip route: the stretch from put-in to take-out, revealed as you scroll
 const T0 = 0.18, T1 = 0.86;
@@ -653,7 +684,7 @@ const millT = Math.min(1, T1 + 0.012);
 {
   const p = river.getPointAt(millT), tan = river.getTangentAt(millT);
   const bridge = new THREE.Group(); bridge.position.set(p.x, 0, p.z); bridge.rotation.y = Math.atan2(tan.x, tan.z); scene.add(bridge); bridge.name = 'bridge'; bridge.updateMatrixWorld(); // local x spans the river
-  const stone = new THREE.MeshLambertMaterial({ map: stoneTex([176, 168, 146], '#7d776a') }), cap = lam(0xb9b29c), road = lam(0x8f7a5a);
+  const stone = new THREE.MeshLambertMaterial({ map: stoneTex([176, 168, 146], '#7d776a') }), cap = lam(0xb9b29c), road = lam(0x80827c);
   const HALF = 4.8, Y = 1.75, DEP = 1.9;
   // elevation with arch openings, extruded across the road width
   const face = new THREE.Shape(); face.moveTo(-HALF, -1.2); face.lineTo(HALF, -1.2); face.lineTo(HALF, Y); face.lineTo(-HALF, Y); face.closePath();
@@ -676,16 +707,27 @@ const millT = Math.min(1, T1 + 0.012);
   }
   box(HALF * 2, 0.03, DEP - 0.48, road, 0, Y + 0.015, 0, bridge);
   for (const s of [-1, 1]) {
-    // gravel road across the levelled ground and on up to the hilltop, draped on the terrain; wing walls flare from the parapets
-    const rv = [], ri = [], tmpV = new THREE.Vector3();
-    for (let x = HALF - 0.1, k = 0; x <= ROAD_END; x += 0.25, k++) {
-      bridge.localToWorld(tmpV.set(s * x, 0, 0)); const y = heightAt(tmpV.x, tmpV.z) + 0.05;
-      rv.push(s * x, y, -0.7, s * x, y, 0.7);
-      if (k) { const a = (k - 1) * 2; ri.push(a, a + 1, a + 2, a + 1, a + 3, a + 2); }
-    }
-    const rg = new THREE.BufferGeometry(); rg.setAttribute('position', new THREE.Float32BufferAttribute(rv, 3)); rg.setIndex(ri); rg.computeVertexNormals();
-    bridge.add(new THREE.Mesh(rg, new THREE.MeshLambertMaterial({ color: 0x8f7a5a, side: THREE.DoubleSide })));
+    // wing walls flare out from the parapets
     for (const z of [-1, 1]) { const w = box(1.1, 0.5, 0.24, stone, s * (HALF + 0.45), Y + 0.1, z * (DEP / 2 + 0.12), bridge); w.rotation.y = s * z * -0.35; }
+  }
+}
+
+// gray roads draped along their profiles, fading out with the map at its edge
+{
+  const up = new THREE.Vector3(0, 1, 0), side = new THREE.Vector3(), mat = new THREE.MeshLambertMaterial({ vertexColors: true, transparent: true, side: THREE.DoubleSide }), gray = new THREE.Color(0x80827c); // same gray as the bridge deck
+  for (const r of roads) {
+    const v = [], col = [], idx = []; let k = 0;
+    r.pts.forEach((q, i) => {
+      if (r.s[i] < 4.7) return; // starts where the bridge deck ends
+      side.crossVectors(r.curve.getTangentAt(i / (r.pts.length - 1)), up).normalize().multiplyScalar(0.75);
+      const y = Math.max(r.prof[i], heightAt(q.x, q.z)) + 0.06, a = 1 - SS(Math.hypot(q.x, q.z), 47, 66);
+      v.push(q.x + side.x, y, q.z + side.z, q.x - side.x, y, q.z - side.z);
+      col.push(gray.r, gray.g, gray.b, a, gray.r, gray.g, gray.b, a);
+      if (k) { const b = (k - 1) * 2; idx.push(b, b + 1, b + 2, b + 1, b + 3, b + 2); }
+      k++;
+    });
+    const g = new THREE.BufferGeometry(); g.setAttribute('position', new THREE.Float32BufferAttribute(v, 3)); g.setAttribute('color', new THREE.Float32BufferAttribute(col, 4)); g.setIndex(idx); g.computeVertexNormals();
+    scene.add(new THREE.Mesh(g, mat));
   }
 }
 
